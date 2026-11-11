@@ -1,7 +1,7 @@
-# Diablo 3 Forever v1.4.0 — Patch Notes
+# Diablo 3 Forever v1.4.1 — Patch Notes
 
 **Release Date:** November 11, 2026  
-**Build:** `v1.4.0`  
+**Build:** `v1.4.1`  
 **Binary:** `Diablo3Forever.exe` (Windows x64 Single-File Standalone — Zero Dependencies)
 
 ---
@@ -85,4 +85,4 @@
 
 | File | SHA-256 Checksum |
 | :--- | :--- |
-| `Diablo3Forever.exe` | `a5c71e889a0df740db413dd73b2eee1ef7905fa6aa72272662e13fc96fbc5d00` |
+| `Diablo3Forever.exe` | `977feabab18e74c1b7c68327fae621dae69f84fb5544e439cfd261e882f600f0` |

@@ -21,7 +21,7 @@ namespace D3Downloader
 
     public static class UpdateChecker
     {
-        public const string CurrentVersion = "1.4.0";
+        public const string CurrentVersion = "1.4.1";
         private const string GitHubApiReleasesLatest = "https://api.github.com/repos/EliteLevelSoftware/D3Forever/releases/latest";
 
         public static async Task<UpdateInfo> CheckForUpdatesAsync(CancellationToken ct = default)
