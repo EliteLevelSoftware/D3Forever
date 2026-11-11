@@ -14,6 +14,13 @@ using System.Windows.Forms;
 
 namespace D3Downloader
 {
+    public enum CdnAvailability
+    {
+        Checking,
+        Ok,
+        Offline
+    }
+
     public sealed class VersionSelectorForm : Form
     {
         [DllImport("user32.dll")]
@@ -66,6 +73,15 @@ namespace D3Downloader
         private readonly Panel _vanillaDrawer;
         private readonly List<Panel> _vanillaVersionChips = new();
 
+        // CDN Availability Tracking & Animation
+        private readonly Dictionary<int, CdnAvailability> _cdnStatuses = new();
+        private readonly System.Windows.Forms.Timer _pulseTimer;
+        private float _pulsePhase = 0f;
+        private static readonly System.Net.Http.HttpClient _probeClient = new()
+        {
+            Timeout = TimeSpan.FromSeconds(3)
+        };
+
         private readonly Panel _bottomPanel;
         private readonly TextBox _txtLog;
         private CancellationTokenSource _cts;
@@ -113,6 +129,33 @@ namespace D3Downloader
             ForeColor = Color.FromArgb(237, 241, 247);
             Font = new Font("Segoe UI", 9.25f, FontStyle.Regular);
             DoubleBuffered = true;
+
+            // Initialize all builds to Checking
+            foreach (var b in D3BuildCatalog.AllBuilds)
+            {
+                _cdnStatuses[b.BuildNumber] = CdnAvailability.Checking;
+            }
+
+            // Pulse timer for breathing dot animation (40ms ~ 25 FPS)
+            _pulseTimer = new System.Windows.Forms.Timer { Interval = 40 };
+            _pulseTimer.Tick += (_, _) =>
+            {
+                _pulsePhase = (_pulsePhase + 0.08f) % ((float)Math.PI * 2);
+                if (_rosExpanded)
+                {
+                    foreach (var c in _rosVersionChips) c.Invalidate();
+                }
+                if (_vanillaExpanded)
+                {
+                    foreach (var c in _vanillaVersionChips) c.Invalidate();
+                }
+                _rosBannerPanel?.Invalidate();
+                _vanillaBannerPanel?.Invalidate();
+            };
+            _pulseTimer.Start();
+
+            // Asynchronously probe each build's availability in background
+            Task.Run(ProbeAllBuildsAsync);
 
             // ================= 1. SEAMLESS TOP TOOLBAR (74px, Minimize + Close Only) =================
             _topToolbar = new BufferedPanel
@@ -688,6 +731,11 @@ namespace D3Downloader
                 {
                     e.Graphics.DrawString(verLabel, valFont, Brushes.White, verBoxRect.X + 11, verBoxRect.Y + 23);
                 }
+
+                // Draw breathing status indicator in the version box
+                CdnAvailability curStatus = _cdnStatuses.TryGetValue(curBuild.BuildNumber, out var st) ? st : CdnAvailability.Checking;
+                DrawStatusPill(e.Graphics, new Point(verBoxRect.Right - 84, verBoxRect.Y + 16), curStatus);
+
                 DrawChevron(e.Graphics, new Point(verBoxRect.Right - 16, verBoxRect.Y + 24), isExp, Color.FromArgb(148, 163, 184));
 
                 var glowRect = new Rectangle(installBtnRect.X, installBtnRect.Y + 3, installBtnRect.Width, installBtnRect.Height);
@@ -757,6 +805,14 @@ namespace D3Downloader
                 else if (!_isInstalling && installBtnRect.Contains(e.Location))
                 {
                     await StartTileInstallAsync(isRos);
+                }
+            };
+            banner.MouseDown += async (_, e) =>
+            {
+                if (viewMoreRect.Contains(e.Location) || verBoxRect.Contains(e.Location))
+                {
+                    if (isRos) ToggleRosDrawer();
+                    else ToggleVanillaDrawer();
                 }
             };
 
@@ -893,7 +949,7 @@ namespace D3Downloader
             return drawer;
         }
 
-        private static Panel CreateVersionChip(
+        private Panel CreateVersionChip(
             D3BuildCatalogItem item,
             string badgeText,
             Point location,
@@ -927,7 +983,11 @@ namespace D3Downloader
                 using var topFont = new Font("Segoe UI", 8.75f, FontStyle.Bold);
                 e.Graphics.DrawString($"{item.Version}.{item.BuildNumber}", topFont, Brushes.White, 10, 6);
 
-                var tagRect = new Rectangle(chip.Width - 58, 7, 48, 16);
+                // Draw Per-File Live Status Pill
+                CdnAvailability status = _cdnStatuses.TryGetValue(item.BuildNumber, out var s) ? s : CdnAvailability.Checking;
+                DrawStatusPill(e.Graphics, new Point(chip.Width - 118, 7), status);
+
+                var tagRect = new Rectangle(chip.Width - 52, 7, 44, 16);
                 using var tagPath = CreateRoundRect(tagRect, 3);
                 using var tagFill = new SolidBrush(sel ? Color.FromArgb(0, 116, 224) : Color.FromArgb(35, 44, 63));
                 using var tagFont = new Font("Segoe UI", 7f, FontStyle.Bold);
@@ -946,6 +1006,108 @@ namespace D3Downloader
             chip.MouseClick += (_, _) => onClick();
 
             return chip;
+        }
+
+        private void DrawStatusPill(Graphics g, Point location, CdnAvailability status)
+        {
+            var pillRect = new Rectangle(location.X, location.Y, 60, 16);
+            using var pillPath = CreateRoundRect(pillRect, 3);
+
+            Color bg, border, text, dot;
+            string label;
+
+            switch (status)
+            {
+                case CdnAvailability.Ok:
+                    bg = Color.FromArgb(40, 46, 160, 67);
+                    border = Color.FromArgb(120, 63, 185, 80);
+                    text = Color.FromArgb(86, 211, 100);
+                    dot = Color.FromArgb(63, 185, 80);
+                    label = "OK";
+                    break;
+                case CdnAvailability.Offline:
+                    bg = Color.FromArgb(45, 248, 81, 73);
+                    border = Color.FromArgb(120, 248, 81, 73);
+                    text = Color.FromArgb(255, 123, 114);
+                    dot = Color.FromArgb(248, 81, 73);
+                    label = "OFFLINE";
+                    break;
+                default: // Checking
+                    bg = Color.FromArgb(40, 210, 153, 34);
+                    border = Color.FromArgb(120, 210, 153, 34);
+                    text = Color.FromArgb(227, 179, 65);
+                    dot = Color.FromArgb(210, 153, 34);
+                    label = "CHECKING";
+                    break;
+            }
+
+            using (var bFill = new SolidBrush(bg))
+            using (var bPen = new Pen(border, 1f))
+            {
+                g.FillPath(bFill, pillPath);
+                g.DrawPath(bPen, pillPath);
+            }
+
+            // Breathing / pulsing dot calculation
+            float breathe = 0.5f + 0.5f * (float)Math.Sin(_pulsePhase);
+            int dotAlpha = (int)(110 + 145 * breathe);
+            using (var dBrush = new SolidBrush(Color.FromArgb(dotAlpha, dot)))
+            {
+                g.FillEllipse(dBrush, location.X + 6, location.Y + 5, 6, 6);
+            }
+
+            // Glow around dot if OK
+            if (status == CdnAvailability.Ok && breathe > 0.3f)
+            {
+                int glowAlpha = (int)(70 * breathe);
+                using var gBrush = new SolidBrush(Color.FromArgb(glowAlpha, dot));
+                g.FillEllipse(gBrush, location.X + 4, location.Y + 3, 10, 10);
+            }
+
+            using (var fFont = new Font("Segoe UI", 6.75f, FontStyle.Bold))
+            using (var fBrush = new SolidBrush(text))
+            {
+                var textRect = new Rectangle(location.X + 13, location.Y, pillRect.Width - 14, pillRect.Height);
+                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                g.DrawString(label, fFont, fBrush, textRect, sf);
+            }
+        }
+
+        private async Task ProbeAllBuildsAsync()
+        {
+            foreach (var build in D3BuildCatalog.AllBuilds)
+            {
+                _ = Task.Run(async () =>
+                {
+                    bool isOk = false;
+                    try
+                    {
+                        if (build.IsCasc)
+                        {
+                            string url = $"http://us.patch.battle.net:1119/{build.ProductCode}/versions";
+                            var req = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Head, url);
+                            var res = await _probeClient.SendAsync(req);
+                            isOk = res.IsSuccessStatusCode;
+                        }
+                        else
+                        {
+                            string url = build.BuildNumber == 8370
+                                ? $"{D3BuildCatalog.LegacyDirectBaseUrl}/Data_D3/PC/MPQs/base-Win.mpq"
+                                : $"{D3BuildCatalog.LegacyDirectBaseUrl}/Updates/d3-0-{build.BuildNumber}-Win-final.MPQ";
+                            var req = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Head, url);
+                            var res = await _probeClient.SendAsync(req);
+                            isOk = res.IsSuccessStatusCode;
+                        }
+                    }
+                    catch
+                    {
+                        isOk = false;
+                    }
+
+                    _cdnStatuses[build.BuildNumber] = isOk ? CdnAvailability.Ok : CdnAvailability.Offline;
+                });
+            }
+            await Task.CompletedTask;
         }
 
         private void ShowLocaleMenu(Control parent, Point location)
@@ -992,17 +1154,18 @@ namespace D3Downloader
             ReflowTiles();
         }
 
+        private void ReflowTiles()
+        {
+            _vanillaCardWrapper.Top = _rosCardWrapper.Bottom + 16;
+            _mainScrollPanel.AutoScrollMinSize = new Size(0, _vanillaCardWrapper.Bottom + 20);
+        }
+
         private void ToggleLogDrawer()
         {
             _logExpanded = !_logExpanded;
             _txtLog.Visible = _logExpanded;
             _bottomPanel.Height = _logExpanded ? 196 : 60;
             _bottomPanel.Invalidate();
-        }
-
-        private void ReflowTiles()
-        {
-            _vanillaCardWrapper.Top = _rosCardWrapper.Bottom + 16;
         }
 
         private async Task StartTileInstallAsync(bool isRos)
