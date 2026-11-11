@@ -28,16 +28,11 @@ jobs:
         run: |
           dotnet publish src/Diablo3Forever.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish
 
-      - name: Package Standalone ZIP & Generate SHA256SUMS
+      - name: Generate SHA256SUMS
         shell: pwsh
         run: |
-          Compress-Archive -Path "publish/Diablo3Forever.exe" -DestinationPath "publish/Diablo3Forever-Standalone.zip" -Force
           $exeHash = (Get-FileHash "publish/Diablo3Forever.exe" -Algorithm SHA256).Hash.ToLower()
-          $zipHash = (Get-FileHash "publish/Diablo3Forever-Standalone.zip" -Algorithm SHA256).Hash.ToLower()
-          @(
-            "$exeHash  Diablo3Forever.exe"
-            "$zipHash  Diablo3Forever-Standalone.zip"
-          ) | Set-Content -Path "publish/SHA256SUMS.txt" -Encoding UTF8
+          "$exeHash  Diablo3Forever.exe" | Set-Content -Path "publish/SHA256SUMS.txt" -Encoding UTF8
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
@@ -45,7 +40,6 @@ jobs:
           name: Diablo3Forever-win-x64
           path: |
             publish/Diablo3Forever.exe
-            publish/Diablo3Forever-Standalone.zip
             publish/SHA256SUMS.txt
 
       - name: Publish GitHub Release (on tag push)
@@ -54,6 +48,5 @@ jobs:
         with:
           files: |
             publish/Diablo3Forever.exe
-            publish/Diablo3Forever-Standalone.zip
             publish/SHA256SUMS.txt
           generate_release_notes: true
