@@ -30,6 +30,7 @@ namespace D3Downloader
             string backupRoot,
             BackupMode mode,
             BackupScope scope,
+            string locale,
             Action<int, int, string> onOverallProgress,
             Action<double, string> onItemProgress,
             Action<string> log,
@@ -55,11 +56,12 @@ namespace D3Downloader
             log($" Destination : {backupRoot}");
             log($" Mode        : {(mode == BackupMode.FastBinaries ? "⚡ Fast Binaries Archive (~3.2 GB)" : "📦 Raw Blizzard CDN Mirror (~48 GB)")}");
             log($" Scope       : {scope} ({candidateBuilds.Count} Target Builds)");
+            log($" Locale      : {locale}");
             log("========================================================================");
 
             if (mode == BackupMode.FastBinaries)
             {
-                return await RunFastBinariesBackupAsync(backupRoot, candidateBuilds, onOverallProgress, onItemProgress, log, ct);
+                return await RunFastBinariesBackupAsync(backupRoot, candidateBuilds, locale, onOverallProgress, onItemProgress, log, ct);
             }
             else
             {
@@ -70,6 +72,7 @@ namespace D3Downloader
         private static async Task<bool> RunFastBinariesBackupAsync(
             string backupRoot,
             List<D3BuildCatalogItem> builds,
+            string locale,
             Action<int, int, string> onOverallProgress,
             Action<double, string> onItemProgress,
             Action<string> log,
@@ -126,7 +129,7 @@ namespace D3Downloader
                         targetDir: targetDir,
                         selectedBuild: b,
                         region: "us",
-                        locale: "enUS",
+                        locale: locale,
                         maxConcurrency: 8,
                         dryRunLimit: 0,
                         binariesOnly: true,

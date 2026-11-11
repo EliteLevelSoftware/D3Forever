@@ -1,10 +1,10 @@
 ﻿# Diablo 3 Forever
 
-**Diablo 3 Forever** (v1.2.0) is a standalone, zero-dependency open-source archival downloader and multi-version installer that streams and reconstructs **91 official Diablo III builds** (spanning retail releases, Public Test Realm PTR iterations, and closed/open beta milestone clients from 2011 to 2025) **100% directly from Blizzard's official CDN servers**.
+**Diablo 3 Forever** (v1.3.0) is a standalone, zero-dependency open-source archival downloader and multi-version installer that streams and reconstructs **91 official Diablo III builds** (spanning retail releases, Public Test Realm PTR iterations, and closed/open beta milestone clients from 2011 to 2025) **100% directly from Blizzard's official CDN servers**.
 
-> ### **[Download `Diablo3Forever.exe` v1.2.0 (Standalone Windows x64 - Zero Dependencies)](https://github.com/EliteLevelSoftware/D3Forever/releases/download/v1.2.0/Diablo3Forever.exe)**
-> - **Version:** `v1.2.0`
-> - **SHA-256:** `750578b4a2eab1481419854634deb7b6a455f379c97a910ef894a348ba15f959` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
+> ### **[Download `Diablo3Forever.exe` v1.3.0 (Standalone Windows x64 - Zero Dependencies)](https://github.com/EliteLevelSoftware/D3Forever/releases/download/v1.3.0/Diablo3Forever.exe)**
+> - **Version:** `v1.3.0`
+> - **SHA-256:** `15f7975981a68739bb8ced7de7f320a780a09e08acc02daa6d36acfabaa126aa` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
 > - **Build Catalog & Provenance Tracker:** [`docs/Diablo3_Versions_Tracker_Enriched.xlsx`](docs/Diablo3_Versions_Tracker_Enriched.xlsx)
 > - Or browse **[GitHub Releases](https://github.com/EliteLevelSoftware/D3Forever/releases)**
 

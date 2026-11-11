@@ -81,6 +81,8 @@ namespace D3Downloader
         private D3BuildCategory _vanillaCategory = D3BuildCategory.Retail;
         private BufferedPanel _rosChipsContainer;
         private BufferedPanel _vanillaChipsContainer;
+        private UpdateInfo _availableUpdate;
+        private bool _hoverUpdateBtn = false;
         private readonly System.Windows.Forms.Timer _pulseTimer;
         private float _pulsePhase = 0f;
         private static readonly System.Net.Http.HttpClient _probeClient = new()
@@ -162,6 +164,7 @@ namespace D3Downloader
 
             // Asynchronously probe each build's availability in background
             Task.Run(ProbeAllBuildsAsync);
+            Task.Run(CheckForAppUpdateAsync);
 
             // ================= 1. SEAMLESS TOP TOOLBAR (74px, Minimize + Close Only) =================
             _topToolbar = new BufferedPanel
@@ -175,8 +178,9 @@ namespace D3Downloader
             bool hoverLocale = false;
             bool hoverBackup = false;
 
-            var backupBtnRect = new Rectangle(465, 22, 185, 30);
-            var localeRect = new Rectangle(668, 22, 196, 30);
+            var updateBtnRect = new Rectangle(320, 22, 148, 30);
+            var backupBtnRect = new Rectangle(480, 22, 175, 30);
+            var localeRect = new Rectangle(675, 22, 196, 30);
             var minRect = new Rectangle(890, 22, 32, 30);
             var closeRect = new Rectangle(926, 22, 32, 30);
 
@@ -224,6 +228,29 @@ namespace D3Downloader
                     e.Graphics.DrawString("Official Blizzard CDN Archive & Multi-Version Installer", subFont, subBrush, 83, 41);
                 }
 
+                // Update Available Pill (Toolbar)
+                if (_availableUpdate?.HasUpdate == true)
+                {
+                    using (var uPath = CreateRoundRect(updateBtnRect, 5))
+                    using (var uFill = new SolidBrush(_hoverUpdateBtn ? Color.FromArgb(20, 83, 45) : Color.FromArgb(6, 44, 28)))
+                    using (var uBorder = new Pen(_hoverUpdateBtn ? Color.FromArgb(52, 211, 153) : Color.FromArgb(16, 185, 129), 1.4f))
+                    {
+                        e.Graphics.FillPath(uFill, uPath);
+                        e.Graphics.DrawPath(uBorder, uPath);
+                    }
+                    using (var dotBrush = new SolidBrush(Color.FromArgb(52, 211, 153)))
+                    {
+                        e.Graphics.FillEllipse(dotBrush, updateBtnRect.X + 10, updateBtnRect.Y + 11, 8, 8);
+                    }
+                    using (var uFont = new Font("Segoe UI", 8.25f, FontStyle.Bold))
+                    using (var uBrush = new SolidBrush(_hoverUpdateBtn ? Color.White : Color.FromArgb(209, 250, 229)))
+                    {
+                        var textRect = new Rectangle(updateBtnRect.X + 22, updateBtnRect.Y, updateBtnRect.Width - 26, updateBtnRect.Height);
+                        var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                        e.Graphics.DrawString($"UPDATE v{_availableUpdate.LatestVersion}", uFont, uBrush, textRect, sf);
+                    }
+                }
+
                 using (var locFont = new Font("Segoe UI", 8.5f, FontStyle.Regular))
                 using (var locBrush = new SolidBrush(Color.FromArgb(194, 203, 224)))
                 {
@@ -252,11 +279,23 @@ namespace D3Downloader
                     e.Graphics.FillPath(bkFill, bkPath);
                     e.Graphics.DrawPath(bkBorder, bkPath);
                 }
+
+                // Crisp vector archive box icon
+                int iconX = backupBtnRect.X + 14;
+                int iconY = backupBtnRect.Y + 8;
+                using (var boxPen = new Pen(hoverBackup ? Color.FromArgb(245, 158, 11) : Color.FromArgb(180, 195, 220), 1.4f))
+                {
+                    e.Graphics.DrawRectangle(boxPen, iconX, iconY + 3, 14, 9);
+                    e.Graphics.DrawLine(boxPen, iconX - 1, iconY + 3, iconX + 15, iconY + 3);
+                    e.Graphics.DrawLine(boxPen, iconX + 4, iconY + 7, iconX + 10, iconY + 7);
+                }
+
                 using (var bkFont = new Font("Segoe UI", 8.25f, FontStyle.Bold))
                 using (var bkBrush = new SolidBrush(hoverBackup ? Color.FromArgb(254, 243, 199) : Color.FromArgb(226, 232, 240)))
                 {
-                    var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                    e.Graphics.DrawString("📦 BACKUP ALL BUILDS", bkFont, bkBrush, backupBtnRect, sf);
+                    var textRect = new Rectangle(backupBtnRect.X + 30, backupBtnRect.Y, backupBtnRect.Width - 34, backupBtnRect.Height);
+                    var sf = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center };
+                    e.Graphics.DrawString("BACKUP ALL BUILDS", bkFont, bkBrush, textRect, sf);
                 }
 
                 // Crisp Vector Window Buttons (Minimize & Close only)
@@ -277,13 +316,15 @@ namespace D3Downloader
 
                 bool newLoc = localeRect.Contains(e.Location);
                 bool newBackup = backupBtnRect.Contains(e.Location);
-                _topToolbar.Cursor = (newHover >= 0 || newLoc || newBackup) ? Cursors.Hand : Cursors.Default;
+                bool newUpdate = _availableUpdate?.HasUpdate == true && updateBtnRect.Contains(e.Location);
+                _topToolbar.Cursor = (newHover >= 0 || newLoc || newBackup || newUpdate) ? Cursors.Hand : Cursors.Default;
 
-                if (newHover != hoverWinBtn || newLoc != hoverLocale || newBackup != hoverBackup)
+                if (newHover != hoverWinBtn || newLoc != hoverLocale || newBackup != hoverBackup || newUpdate != _hoverUpdateBtn)
                 {
                     hoverWinBtn = newHover;
                     hoverLocale = newLoc;
                     hoverBackup = newBackup;
+                    _hoverUpdateBtn = newUpdate;
                     _topToolbar.Invalidate();
                 }
             };
@@ -292,6 +333,7 @@ namespace D3Downloader
                 hoverWinBtn = -1;
                 hoverLocale = false;
                 hoverBackup = false;
+                _hoverUpdateBtn = false;
                 _topToolbar.Invalidate();
             };
             _topToolbar.MouseDown += (_, e) =>
@@ -299,6 +341,12 @@ namespace D3Downloader
                 if (e.Button != MouseButtons.Left) return;
                 if (closeRect.Contains(e.Location)) { Close(); return; }
                 if (minRect.Contains(e.Location)) { WindowState = FormWindowState.Minimized; return; }
+                if (_availableUpdate?.HasUpdate == true && updateBtnRect.Contains(e.Location))
+                {
+                    using var uDlg = new UpdateDialog(_availableUpdate);
+                    uDlg.ShowDialog(this);
+                    return;
+                }
                 if (backupBtnRect.Contains(e.Location))
                 {
                     using var dlg = new BackupDialog(_txtTargetLocation?.Text ?? @"C:\Games\Diablo III");
@@ -723,9 +771,12 @@ namespace D3Downloader
                 }
 
                 bool isExp = isRos ? _rosExpanded : _vanillaExpanded;
+                int totalBuildCount = isRos
+                    ? D3BuildCatalog.AllBuilds.Count(b => b.IsRoS)
+                    : D3BuildCatalog.AllBuilds.Count(b => !b.IsRoS);
                 string vmText = isExp
-                    ? (isRos ? "Hide 15 RoS Versions" : "Hide 19 Vanilla Versions")
-                    : (isRos ? "View More (Choose from 15 Versions)" : "View More (Choose from 19 Versions)");
+                    ? (isRos ? $"Hide {totalBuildCount} RoS Versions" : $"Hide {totalBuildCount} Vanilla Versions")
+                    : $"View More (Choose from {totalBuildCount} Versions)";
 
                 using (var vmPath = CreateRoundRect(viewMoreRect, 4))
                 using (var vmFill = new SolidBrush(hoverViewMore ? Color.FromArgb(230, 24, 34, 52) : Color.FromArgb(215, 12, 16, 26)))
@@ -942,9 +993,9 @@ namespace D3Downloader
                     "Binaries Only (~35 MB Fast Patch)", Color.FromArgb(126, 231, 135));
 
                 // Draw Segmented Tabs
-                DrawDrawerTab(e.Graphics, tabRetailRect, $"⭐ Retail ({countRetail})", _rosCategory == D3BuildCategory.Retail, Color.FromArgb(59, 130, 246));
-                DrawDrawerTab(e.Graphics, tabPtrRect, $"🧪 Public Test Realm ({countPtr})", _rosCategory == D3BuildCategory.Ptr, Color.FromArgb(168, 85, 247));
-                DrawDrawerTab(e.Graphics, tabBetaRect, $"🔒 Closed Beta ({countBeta})", _rosCategory == D3BuildCategory.Beta, Color.FromArgb(234, 179, 8));
+                DrawDrawerTab(e.Graphics, tabRetailRect, $"Retail ({countRetail})", _rosCategory == D3BuildCategory.Retail, Color.FromArgb(59, 130, 246));
+                DrawDrawerTab(e.Graphics, tabPtrRect, $"Public Test Realm ({countPtr})", _rosCategory == D3BuildCategory.Ptr, Color.FromArgb(168, 85, 247));
+                DrawDrawerTab(e.Graphics, tabBetaRect, $"Closed Beta ({countBeta})", _rosCategory == D3BuildCategory.Beta, Color.FromArgb(234, 179, 8));
             };
 
             drawer.MouseMove += (_, e) =>
@@ -1078,9 +1129,9 @@ namespace D3Downloader
                     "Binaries Only (~35 MB Fast Patch)", Color.FromArgb(126, 231, 135));
 
                 // Draw Segmented Tabs
-                DrawDrawerTab(e.Graphics, tabRetailRect, $"⭐ Retail ({countRetail})", _vanillaCategory == D3BuildCategory.Retail, Color.FromArgb(59, 130, 246));
-                DrawDrawerTab(e.Graphics, tabPtrRect, $"🧪 Public Test Realm ({countPtr})", _vanillaCategory == D3BuildCategory.Ptr, Color.FromArgb(168, 85, 247));
-                DrawDrawerTab(e.Graphics, tabBetaRect, $"🔒 Closed Beta ({countBeta})", _vanillaCategory == D3BuildCategory.Beta, Color.FromArgb(234, 179, 8));
+                DrawDrawerTab(e.Graphics, tabRetailRect, $"Retail ({countRetail})", _vanillaCategory == D3BuildCategory.Retail, Color.FromArgb(59, 130, 246));
+                DrawDrawerTab(e.Graphics, tabPtrRect, $"Public Test Realm ({countPtr})", _vanillaCategory == D3BuildCategory.Ptr, Color.FromArgb(168, 85, 247));
+                DrawDrawerTab(e.Graphics, tabBetaRect, $"Closed Beta ({countBeta})", _vanillaCategory == D3BuildCategory.Beta, Color.FromArgb(234, 179, 8));
             };
 
             drawer.MouseMove += (_, e) =>
@@ -1129,10 +1180,17 @@ namespace D3Downloader
             g.FillPath(fill, path);
             g.DrawPath(pen, path);
 
+            // Draw crisp colored vector dot indicator
+            using (var dotBrush = new SolidBrush(isSelected ? activeAccent : Color.FromArgb(100, 116, 139)))
+            {
+                g.FillEllipse(dotBrush, rect.X + 12, rect.Y + (rect.Height - 6) / 2, 6, 6);
+            }
+
             using var font = new Font("Segoe UI", 8.25f, isSelected ? FontStyle.Bold : FontStyle.Regular);
             using var brush = new SolidBrush(isSelected ? Color.White : Color.FromArgb(148, 163, 184));
+            var textRect = new Rectangle(rect.X + 22, rect.Y, rect.Width - 26, rect.Height);
             var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            g.DrawString(text, font, brush, rect, sf);
+            g.DrawString(text, font, brush, textRect, sf);
         }
 
         private Panel CreateVersionChip(
@@ -1597,6 +1655,21 @@ namespace D3Downloader
             {
                 return null;
             }
+        }
+
+        private async Task CheckForAppUpdateAsync()
+        {
+            try
+            {
+                var info = await UpdateChecker.CheckForUpdatesAsync();
+                if (info.HasUpdate)
+                {
+                    _availableUpdate = info;
+                    if (InvokeRequired) BeginInvoke((Action)(() => _topToolbar.Invalidate()));
+                    else _topToolbar.Invalidate();
+                }
+            }
+            catch { }
         }
 
         private sealed class BufferedPanel : Panel

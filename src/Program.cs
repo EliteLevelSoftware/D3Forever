@@ -162,12 +162,38 @@ namespace D3Downloader
                         backupRoot: backupDest,
                         mode: mode,
                         scope: scope,
+                        locale: locale,
                         onOverallProgress: (curr, tot, msg) => Console.WriteLine($"[OVERALL {curr}/{tot}] {msg}"),
                         onItemProgress: (pct, msg) => { },
                         log: Console.WriteLine,
                         ct: CancellationToken.None).GetAwaiter().GetResult();
 
                     return ok ? 0 : 1;
+                }
+                else if (arg.Equals("--check-update", StringComparison.OrdinalIgnoreCase) || arg.Equals("--update", StringComparison.OrdinalIgnoreCase))
+                {
+                    AttachConsole(-1);
+                    try
+                    {
+                        var stdOut = new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true };
+                        Console.SetOut(stdOut);
+                        var stdErr = new StreamWriter(Console.OpenStandardError()) { AutoFlush = true };
+                        Console.SetError(stdErr);
+                    }
+                    catch { }
+
+                    var uInfo = UpdateChecker.CheckForUpdatesAsync().GetAwaiter().GetResult();
+                    if (uInfo.HasUpdate)
+                    {
+                        Console.WriteLine($"[UPDATE AVAILABLE] Version {uInfo.LatestVersion} is available (Current: {uInfo.CurrentVersion})");
+                        Console.WriteLine($"Download URL: {uInfo.DownloadUrl}");
+                        Console.WriteLine($"Changelog:\n{uInfo.ReleaseNotes}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[UP TO DATE] Diablo 3 Forever is running the latest version (v{uInfo.CurrentVersion}).");
+                    }
+                    return 0;
                 }
                 else if (!arg.StartsWith("-"))
                 {

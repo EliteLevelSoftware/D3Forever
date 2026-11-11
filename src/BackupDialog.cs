@@ -23,6 +23,7 @@ namespace D3Downloader
         private readonly RadioButton _rbFastBinaries;
         private readonly RadioButton _rbRawCdn;
         private readonly ComboBox _cbScope;
+        private readonly ComboBox _cbLocale;
         private readonly ProgressBar _pbOverall;
         private readonly ProgressBar _pbCurrent;
         private readonly Label _lblOverall;
@@ -179,10 +180,10 @@ namespace D3Downloader
             };
             Controls.Add(_rbRawCdn);
 
-            // Group 2: Scope
+            // Group 2: Scope & Regional Locale
             var lblScope = new Label
             {
-                Text = "TARGET SCOPE:",
+                Text = "SCOPE:",
                 Location = new Point(24, 216),
                 AutoSize = true,
                 Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
@@ -192,19 +193,57 @@ namespace D3Downloader
 
             _cbScope = new ComboBox
             {
-                Location = new Point(135, 213),
-                Size = new Size(320, 26),
+                Location = new Point(78, 213),
+                Size = new Size(302, 26),
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 BackColor = Color.FromArgb(17, 23, 34),
                 ForeColor = Color.White,
-                Font = new Font("Segoe UI", 8.75f)
+                Font = new Font("Segoe UI", 8.5f)
             };
-            _cbScope.Items.Add("All 91 Builds (Full Historical Catalog — Retail, PTR, Beta)");
+            _cbScope.Items.Add("All 91 Builds (Full Catalog — Retail, PTR, Beta)");
             _cbScope.Items.Add("Retail Releases Only (38 Milestone Builds)");
             _cbScope.Items.Add("Reaper of Souls Only (41 Expansion Builds)");
             _cbScope.Items.Add("Vanilla Classic Only (50 Classic Builds)");
             _cbScope.SelectedIndex = 0;
             Controls.Add(_cbScope);
+
+            var lblLocale = new Label
+            {
+                Text = "LOCALE:",
+                Location = new Point(394, 216),
+                AutoSize = true,
+                Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(154, 166, 191)
+            };
+            Controls.Add(lblLocale);
+
+            _cbLocale = new ComboBox
+            {
+                Location = new Point(456, 213),
+                Size = new Size(258, 26),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                BackColor = Color.FromArgb(17, 23, 34),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 8.5f)
+            };
+            _cbLocale.Items.AddRange(new object[]
+            {
+                "enUS - English (US)",
+                "enGB - English (EU)",
+                "deDE - Deutsch (German)",
+                "frFR - Français (French)",
+                "esES - Español (Spanish EU)",
+                "esMX - Español (Spanish AL)",
+                "ptBR - Português (Portuguese)",
+                "itIT - Italiano (Italian)",
+                "plPL - Polski (Polish)",
+                "ruRU - Русский (Russian)",
+                "koKR - 한국어 (Korean)",
+                "zhTW - 繁體中文 (Traditional Chinese)",
+                "zhCN - 简体中文 (Simplified Chinese)"
+            });
+            _cbLocale.SelectedIndex = 0;
+            Controls.Add(_cbLocale);
 
             // Progress Section
             _lblOverall = new Label
@@ -331,6 +370,7 @@ namespace D3Downloader
             _rbFastBinaries.Enabled = false;
             _rbRawCdn.Enabled = false;
             _cbScope.Enabled = false;
+            _cbLocale.Enabled = false;
 
             _cts = new CancellationTokenSource();
 
@@ -343,12 +383,20 @@ namespace D3Downloader
                 _ => BackupScope.All
             };
 
+            string selectedLocale = "enUS";
+            if (_cbLocale.SelectedItem != null)
+            {
+                string s = _cbLocale.SelectedItem.ToString();
+                if (s.Length >= 4) selectedLocale = s.Substring(0, 4);
+            }
+
             try
             {
                 await BackupEngine.RunBackupAsync(
                     backupRoot: dest,
                     mode: mode,
                     scope: scope,
+                    locale: selectedLocale,
                     onOverallProgress: (curr, total, status) =>
                     {
                         if (InvokeRequired)
@@ -432,6 +480,7 @@ namespace D3Downloader
                 _rbFastBinaries.Enabled = true;
                 _rbRawCdn.Enabled = true;
                 _cbScope.Enabled = true;
+                _cbLocale.Enabled = true;
             }
         }
 
