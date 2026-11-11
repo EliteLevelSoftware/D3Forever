@@ -77,45 +77,129 @@
 ## Supported Official CDN Builds (91 Versions)
 
 ### Reaper of Souls (41 Builds Across Retail, PTR & Beta)
-- **Retail (20 Builds):** `2.8.0.99920` (Global Live), `2.8.1.101167` (CN CDN), `2.7.8.97927`, `2.7.7.93903`, `2.7.7.92326`, `2.7.6.91007`, `2.7.4.84161`, `2.7.3.82785`, `2.1.2.28709`, `2.1.1.27255`, `2.1.0.26451`, `2.0.6.24641`, `2.0.5a.24017`, `2.0.5.23920`, `2.0.4.23119`, `2.0.3.22427`, `2.0.2.22274`, `2.0.1.22044`, `2.0.0.20813` (Base MPQ).
-- **Public Test Realm (9 Builds):** `2.7.8.96670` (CASC `d3t`), `2.1.2.28709`, `2.1.2.28341`, `2.1.0.26370`, `2.1.0.26281`, `2.1.0.26067`, `2.1.0.25658`, `2.1.0.25390`, `2.1.0.25014`.
-- **Closed Beta (12 Builds):** `Beta.21962`, `Beta.21806`, `Beta.21390`, `Beta.20874`, `Beta.20493`, `Beta.20134`, `Beta.19992`, `Beta.19614`, `Beta.19533`, `Beta.19445`, `Beta.19177`, `Beta.18962` (Base RoS Beta).
+
+#### Retail Releases (19 Builds)
+
+| Version | Build | Architecture | Release Date | Summary / Highlights |
+| :--- | :--- | :--- | :--- | :--- |
+| **`2.8.0`** | `99920` | CASC 64-bit | Live Retail | Global Live Retail Client (64-bit CASC) |
+| **`2.8.1`** | `101167` | CASC 64-bit | CN CDN | Patch 2.8.1 Production Client (64-bit CASC) |
+| **`2.7.8`** | `97927` | CASC 64-bit | 2024-09-10 | Patch 2.7.8 Post-Loc Production Build |
+| **`2.7.7`** | `93903` | CASC 64-bit | 2024-02-06 | Patch 2.7.7a Production Release Candidate 2 |
+| **`2.7.7`** | `92326` | CASC 64-bit | 2024-01-09 | Patch 2.7.7 Production Release Candidate 1 |
+| **`2.7.6`** | `91007` | CASC 64-bit | 2023-09-12 | Patch 2.7.6 Solo Self-Found Update (64-bit CASC) |
+| **`2.7.4`** | `84161` | CASC 64-bit | 2022-08-23 | Patch 2.7.4 Angelic Crucibles Update (64-bit CASC) |
+| **`2.7.3`** | `82785` | CASC 64-bit | 2022-04-12 | Patch 2.7.3 Echoing Nightmare Client (64-bit CASC) |
+| **`2.1.2`** | `28709` | MPQ 32-bit | 2015-01-13 | Patch 2.1.2 (Ancient Items, Conduit Pylon Rework) |
+| **`2.1.1`** | `27255` | MPQ 32-bit | 2014-09-23 | Patch 2.1.1 (Kadala Bloodshard Costs, Pet Toughness) |
+| **`2.1.0`** | `26451` | MPQ 32-bit | 2014-08-26 | Major Update (Greater Rifts, Legendary Gems, The Vault) |
+| **`2.0.6`** | `24641` | MPQ 32-bit | 2014-06-10 | Patch 2.0.6 (Crafting Material Removal, Class Balancing) |
+| **`2.0.5a`** | `24017` | MPQ 32-bit | 2014-05-15 | Patch 2.0.5a Stability & Bugfix Hotfix |
+| **`2.0.5`** | `23920` | MPQ 32-bit | 2014-05-13 | Patch 2.0.5 (Horadric Cache Torment Drop Rates, Gold Trade) |
+| **`2.0.4`** | `23119` | MPQ 32-bit | 2014-04-08 | Patch 2.0.4 (Crusader Wrath Fixes, Class Tweaks) |
+| **`2.0.3`** | `22427` | MPQ 32-bit | 2014-03-11 | Patch 2.0.3 Bugfix & Stability Update |
+| **`2.0.2`** | `22274` | MPQ 32-bit | 2014-03-04 | Patch 2.0.2 Pre-Expansion Optimization Patch |
+| **`2.0.1`** | `22044` | MPQ 32-bit | 2014-02-25 | Reaper of Souls Pre-Patch (Loot 2.0, Paragon 2.0) |
+| **`2.0.0`** | `20813` | MPQ 32-bit | 2014-01-20 | Reaper of Souls Unpatched Retail Base MPQ Build |
+
+#### Public Test Realm (PTR) (9 Builds)
+
+| Version | Build | Architecture | Release Date | Summary / Highlights |
+| :--- | :--- | :--- | :--- | :--- |
+| **`2.7.8`** | `96670` | CASC 64-bit | 2024-08-20 | Patch 2.7.8 Public Test Realm Client (64-bit CASC) |
+| **`2.1.2`** | `28709` | MPQ 32-bit | 2015-01-08 | Patch 2.1.2 PTR Release Candidate Build |
+| **`2.1.2`** | `28341` | MPQ 32-bit | 2014-11-20 | Patch 2.1.2 PTR Wave 1 (Ancient Items Debut) |
+| **`2.1.0`** | `26370` | MPQ 32-bit | 2014-08-06 | Patch 2.1.0 PTR Release Candidate Build |
+| **`2.1.0`** | `26281` | MPQ 32-bit | 2014-07-30 | Patch 2.1.0 PTR Iteration 4 (Greater Rift Pacing) |
+| **`2.1.0`** | `26067` | MPQ 32-bit | 2014-07-23 | Patch 2.1.0 PTR Iteration 3 (Seasons Testing) |
+| **`2.1.0`** | `25658` | MPQ 32-bit | 2014-07-16 | Patch 2.1.0 PTR Iteration 2 (Legendary Gems Balance) |
+| **`2.1.0`** | `25390` | MPQ 32-bit | 2014-07-09 | Patch 2.1.0 PTR Iteration 1 (Cesspools & Greater Rifts) |
+| **`2.1.0`** | `25014` | MPQ 32-bit | 2014-06-25 | Patch 2.1.0 Initial PTR Launch Build |
+
+#### Closed Beta (12 Builds)
+
+| Version | Build | Architecture | Release Date | Summary / Highlights |
+| :--- | :--- | :--- | :--- | :--- |
+| **`Beta`** | `21962` | MPQ 32-bit | 2014-02-20 | RoS Closed Beta Final Patch Before 2.0 Pre-Patch |
+| **`Beta`** | `21806` | MPQ 32-bit | 2014-02-13 | RoS Closed Beta Iteration 9 (Crusader Final Polish) |
+| **`Beta`** | `21390` | MPQ 32-bit | 2014-02-06 | RoS Closed Beta Iteration 8 (Torment Scaling) |
+| **`Beta`** | `20874` | MPQ 32-bit | 2013-12-13 | RoS Closed Beta Patch 2.0.1 In-Game Notes Update |
+| **`Beta`** | `20493` | MPQ 32-bit | 2014-01-22 | RoS Closed Beta Iteration 6 (Nephalem Rifts) |
+| **`Beta`** | `20134` | MPQ 32-bit | 2014-01-15 | RoS Closed Beta Iteration 5 (Blood Shards) |
+| **`Beta`** | `19992` | MPQ 32-bit | 2014-01-08 | RoS Closed Beta Iteration 4 (Adventure Mode) |
+| **`Beta`** | `19862` | MPQ 32-bit | 2013-12-23 | RoS Closed Beta Iteration 3 (Kadala Gambling) |
+| **`Beta`** | `19796` | MPQ 32-bit | 2013-12-19 | RoS Closed Beta Iteration 2 (Bounties System) |
+| **`Beta`** | `19561` | MPQ 32-bit | 2013-12-12 | RoS Closed Beta Iteration 1 (Act V Westmarch) |
+| **`Beta`** | `19177` | MPQ 32-bit | 2013-12-03 | RoS Closed Beta F&F First Update Patch |
+| **`Beta`** | `18962` | MPQ 32-bit | 2013-08-30 | Original RoS Friends & Family Closed Beta Base Client |
+
 
 ### Vanilla Classic (50 Builds Across Retail, PTR & Beta)
-- **Retail (18 Builds):** `1.0.8a.16603`, `1.0.8.16416`, `1.0.7a.15295`, `1.0.7.14633`, `1.0.6a.13644`, `1.0.6.13300`, `1.0.5a.12811`, `1.0.5.12480`, `1.0.4.11327`, `1.0.3b.10485`, `1.0.3a.10235`, `1.0.3.10057`, `1.0.2c.9991`, `1.0.2b.9950`, `1.0.2a.9858`, `1.0.2.9749`, `1.0.1.9558`, `1.0.0.8370` (Original Retail Base).
-- **Public Test Realm (13 Builds):** `1.0.8.16256`, `1.0.8.16107`, `1.0.8.16033`, `1.0.8.15926`, `1.0.7.14528`, `1.0.7.14456`, `1.0.7.14295`, `1.0.7.14161`, `1.0.5.12389`, `1.0.5.12289`, `1.0.5.12166`, `1.0.5.12150`, `1.0.3.10485` (Base PTR).
-- **Closed & Open Beta (19 Builds):** `Beta.9359` (Open Beta Weekend), `Beta.9327`, `Beta.9183`, `Beta.8896`, `Beta.8815`, `Beta.8610`, `Beta.8392`, `Beta.8350`, `Beta.8296`, `Beta.8101`, `Beta.8059`, `Beta.7931`, `Beta.7841`, `Beta.7728`, `Beta.7447`, `Beta.7338`, `Beta.7318`, `Beta.7200`, `Beta.7162` (Friends & Family Base).
-| **`2.0.5a.24017`**| `24017` | MPQ 32-bit (`20813.direct`) | 2014-05-15 | Patch 2.0.5a Stability & Bugfix Hotfix |
-| **`2.0.5.23920`** | `23920` | MPQ 32-bit (`20813.direct`) | 2014-05-13 | Patch 2.0.5 (Horadric Cache Torment Drop Rates, Gold Trade) |
-| **`2.0.4.23119`** | `23119` | MPQ 32-bit (`20813.direct`) | 2014-04-08 | Patch 2.0.4 (Crusader Wrath Fixes, Class Tweaks) |
-| **`2.0.3.22427`** | `22427` | MPQ 32-bit (`20813.direct`) | 2014-03-11 | Patch 2.0.3 Bugfix & Stability Update |
-| **`2.0.2.22274`** | `22274` | MPQ 32-bit (`20813.direct`) | 2014-03-04 | Patch 2.0.2 Pre-Expansion Optimization Patch |
-| **`2.0.1.22044`** | `22044` | MPQ 32-bit (`20813.direct`) | 2014-02-25 | Reaper of Souls Pre-Patch (Loot 2.0, Paragon 2.0) |
-| **`2.0.0.20813`** | `20813` | MPQ 32-bit (`20813.direct`) | 2014-01-20 | Reaper of Souls Unpatched Retail Base MPQ Build |
-| **`Beta.18962`**  | `18962` | MPQ 32-bit (`18962.direct`) | 2013-11-20 | Original RoS Friends & Family Closed Beta Base Client |
 
-### Diablo III Vanilla Classic (19 Builds — 2011 Beta & 2012-2013 MPQ Retail)
-| Version | Build | Release Date | Highlights |
-| :--- | :--- | :--- | :--- |
-| **`1.0.8a.16603`** | `16603` | `2013-05-10` | **Default Newest Vanilla** - Final Vanilla 1.0.8 Hotfix Build |
-| **`1.0.8.16416`** | `16416` | `2013-05-07` | Monster Density & Co-op XP Bonus Patch |
-| **`1.0.7a.15295`** | `15295` | `2013-02-15` | Brawling & Demon Hunter Hotfix |
-| **`1.0.7.14633`** | `14633` | `2013-02-12` | PvP Brawling, Marquise Gems & Account-Bound Crafting |
-| **`1.0.6a.13644`** | `13644` | `2012-12-06` | Quest & Stability Patch |
-| **`1.0.6.13300`** | `13300` | `2012-11-27` | Network & Bugfix Patch |
-| **`1.0.5a.12811`** | `12811` | `2012-10-25` | Crash & Achievement Fix Patch |
-| **`1.0.5.12480`** | `12480` | `2012-10-16` | Monster Power (MP1-10) & Infernal Machine |
-| **`1.0.4.11327`** | `11327` | `2012-08-21` | Paragon 1.0 (Levels 1-100) & Legendary Overhaul |
-| **`1.0.3b.10485`** | `10485` | `2012-07-10` | Auction House & Stability Patch |
-| **`1.0.3a.10235`** | `10235` | `2012-06-26` | Zombie Bears & Wear-and-Tear Hotfix |
-| **`1.0.3.10057`** | `10057` | `2012-06-19` | Inferno Tuning, IAS Nerf & Repair Cost Patch |
-| **`1.0.2c.9991`** | `9991` | `2012-06-12` | Mac/PC Client Stability Patch |
-| **`1.0.2b.9950`** | `9950` | `2012-06-07` | Login & Auction House Responsiveness Patch |
-| **`1.0.2a.9858`** | `9858` | `2012-06-01` | Item & Skill Tooltip Fix Patch |
-| **`1.0.2.9749`** | `9749` | `2012-05-29` | First Post-Launch Client Patch |
-| **`1.0.1.9558`** | `9558` | `2012-05-15` | Original May 15, 2012 Launch Day Patch |
-| **`1.0.0.8370`** | `8370` | `2012-05-14` | Original Unpatched Retail DVD Base MPQ Build |
-| **`Beta.7162`**   | `7162` | `2011-09-20` | Original Vanilla Friends & Family Beta Client (`7162.direct`) |
+#### Retail Releases (18 Builds)
+
+| Version | Build | Architecture | Release Date | Summary / Highlights |
+| :--- | :--- | :--- | :--- | :--- |
+| **`1.0.8a`** | `16603` | MPQ 32-bit | 2013-05-10 | Final Vanilla 1.0.8 Hotfix Build |
+| **`1.0.8`** | `16416` | MPQ 32-bit | 2013-05-07 | Monster Density & Co-op XP Bonus Patch |
+| **`1.0.7a`** | `15295` | MPQ 32-bit | 2013-02-15 | Duelling & Demon Hunter Hotfix |
+| **`1.0.7`** | `14633` | MPQ 32-bit | 2013-02-12 | Brawling, Marquise Gems & BoA Crafting |
+| **`1.0.6a`** | `13644` | MPQ 32-bit | 2012-12-06 | Quest & Stability Patch |
+| **`1.0.6`** | `13300` | MPQ 32-bit | 2012-11-27 | Network & Bugfix Patch |
+| **`1.0.5a`** | `12811` | MPQ 32-bit | 2012-10-25 | Crash & Achievement Fix Patch |
+| **`1.0.5`** | `12480` | MPQ 32-bit | 2012-10-16 | Monster Power (MP1-10) & Infernal Machine |
+| **`1.0.4`** | `11327` | MPQ 32-bit | 2012-08-21 | Paragon 1.0 (Levels 1-100) & Legendary Overhaul |
+| **`1.0.3b`** | `10485` | MPQ 32-bit | 2012-07-10 | Auction House & Stability Patch |
+| **`1.0.3a`** | `10235` | MPQ 32-bit | 2012-06-26 | Zombie Bears & General Bugfix Patch |
+| **`1.0.3`** | `10057` | MPQ 32-bit | 2012-06-19 | Inferno Tuning, IAS Nerf & Repair Cost Patch |
+| **`1.0.2c`** | `9991` | MPQ 32-bit | 2012-06-12 | Mac/PC Client Stability Patch |
+| **`1.0.2b`** | `9950` | MPQ 32-bit | 2012-06-07 | Login & Auction House Responsiveness Patch |
+| **`1.0.2a`** | `9858` | MPQ 32-bit | 2012-06-01 | Item & Skill Tooltip Fix Patch |
+| **`1.0.2`** | `9749` | MPQ 32-bit | 2012-05-29 | First Post-Launch Client Patch |
+| **`1.0.1`** | `9558` | MPQ 32-bit | 2012-05-15 | Original May 15, 2012 Launch Day Patch |
+| **`1.0.0`** | `8370` | MPQ 32-bit | 2012-05-14 | Original Unpatched Retail DVD Base MPQ Build |
+
+#### Public Test Realm (PTR) (13 Builds)
+
+| Version | Build | Architecture | Release Date | Summary / Highlights |
+| :--- | :--- | :--- | :--- | :--- |
+| **`1.0.8`** | `16256` | MPQ 32-bit | 2013-04-30 | Patch 1.0.8 PTR Release Candidate 4 |
+| **`1.0.8`** | `16107` | MPQ 32-bit | 2013-04-23 | Patch 1.0.8 PTR Iteration 3 (Matchmaking Tags) |
+| **`1.0.8`** | `16033` | MPQ 32-bit | 2013-04-16 | Patch 1.0.8 PTR Iteration 2 (Identify All & Density) |
+| **`1.0.8`** | `15926` | MPQ 32-bit | 2013-04-09 | Patch 1.0.8 Initial PTR Launch Build |
+| **`1.0.7`** | `14528` | MPQ 32-bit | 2013-02-05 | Patch 1.0.7 PTR Release Candidate 4 |
+| **`1.0.7`** | `14456` | MPQ 32-bit | 2013-01-29 | Patch 1.0.7 PTR Iteration 3 (Marquise Gems Balance) |
+| **`1.0.7`** | `14295` | MPQ 32-bit | 2013-01-22 | Patch 1.0.7 PTR Iteration 2 (Archon & Tempest Rush) |
+| **`1.0.7`** | `14161` | MPQ 32-bit | 2013-01-15 | Patch 1.0.7 Initial PTR Launch Build (Brawling) |
+| **`1.0.5`** | `12389` | MPQ 32-bit | 2012-10-08 | Patch 1.0.5 PTR Release Candidate 4 |
+| **`1.0.5`** | `12289` | MPQ 32-bit | 2012-10-02 | Patch 1.0.5 PTR Iteration 3 (Infernal Machine) |
+| **`1.0.5`** | `12166` | MPQ 32-bit | 2012-09-24 | Patch 1.0.5 PTR Iteration 2 (Monster Power) |
+| **`1.0.5`** | `12150` | MPQ 32-bit | 2012-09-21 | Patch 1.0.5 Initial PTR Launch Build |
+| **`1.0.3`** | `10485` | MPQ 32-bit | 2012-07-10 | Vanilla PTR Base Client Archive |
+
+#### Closed & Open Beta (19 Builds)
+
+| Version | Build | Architecture | Release Date | Summary / Highlights |
+| :--- | :--- | :--- | :--- | :--- |
+| **`Beta`** | `9359` | MPQ 32-bit | 2012-04-19 | Vanilla Open Beta Weekend Client (April 20-23, 2012) |
+| **`Beta`** | `9327` | MPQ 32-bit | 2012-04-17 | Vanilla Beta Patch 17 |
+| **`Beta`** | `9183` | MPQ 32-bit | 2012-04-09 | Vanilla Beta Patch 16 |
+| **`Beta`** | `8896` | MPQ 32-bit | 2012-03-16 | Vanilla Beta Patch 15 |
+| **`Beta`** | `8815` | MPQ 32-bit | 2012-03-08 | Vanilla Beta Patch 14 (Hardcore Mode Added) |
+| **`Beta`** | `8610` | MPQ 32-bit | 2012-02-18 | Vanilla Beta Patch 13 (Skill Rune System Overhaul) |
+| **`Beta`** | `8392` | MPQ 32-bit | 2012-02-03 | Vanilla Beta Patch 12 |
+| **`Beta`** | `8350` | MPQ 32-bit | 2012-01-30 | Vanilla Beta Patch 11 |
+| **`Beta`** | `8296` | MPQ 32-bit | 2012-01-23 | Vanilla Beta Patch 10 |
+| **`Beta`** | `8101` | MPQ 32-bit | 2011-12-20 | Vanilla Beta Patch 9 (Attribute & Skill Overhaul) |
+| **`Beta`** | `8059` | MPQ 32-bit | 2011-12-15 | Vanilla Beta Patch 8 (BattleTags Introduced) |
+| **`Beta`** | `7931` | MPQ 32-bit | 2011-12-01 | Vanilla Beta Patch 7 (Real-Money Auction House) |
+| **`Beta`** | `7841` | MPQ 32-bit | 2011-11-17 | Vanilla Beta Patch 6 (Profiles & Achievements) |
+| **`Beta`** | `7728` | MPQ 32-bit | 2011-11-03 | Vanilla Beta Patch 5 (Demon Hunter Rework) |
+| **`Beta`** | `7447` | MPQ 32-bit | 2011-09-26 | Vanilla Beta Patch 4 (Server Data Removed) |
+| **`Beta`** | `7338` | MPQ 32-bit | 2011-09-14 | Vanilla Beta Patch 3 (Auction House Added) |
+| **`Beta`** | `7318` | MPQ 32-bit | 2011-09-07 | Vanilla Beta Patch 2 |
+| **`Beta`** | `7200` | MPQ 32-bit | 2011-09-02 | Vanilla Beta Patch 1 (Friends & Family Launch) |
+| **`Beta`** | `7162` | MPQ 32-bit | 2011-08-18 | Original Vanilla Friends & Family Beta Base Client |
 
 ---
 
@@ -125,7 +209,7 @@
 # Launch the interactive GUI (default when no flags are passed)
 Diablo3Forever.exe
 
-# List all 34 official CDN builds and exit
+# List all 91 official CDN builds and exit
 Diablo3Forever.exe --list-versions
 
 # Install the newest Live Reaper of Souls (2.8.0.99920) silently
