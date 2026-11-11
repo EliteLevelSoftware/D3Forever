@@ -1,0 +1,2 @@
+﻿dc1ad0389da9a33dfc0599bdd5606dab549ae557c8ca0c12c2cc8feb63e1e7c7  Diablo3Forever.exe
+f85c0a0a7591a44436c8158d3683ccfca854b775c09bd2293d2f1e3ac6769751  Diablo3Forever-Standalone.zip

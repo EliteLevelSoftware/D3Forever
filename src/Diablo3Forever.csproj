@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>Diablo3Forever</AssemblyName>
+    <Product>Diablo 3 Forever</Product>
+    <AssemblyTitle>Diablo 3 Forever</AssemblyTitle>
+    <ApplicationIcon>Assets\app_icon.ico</ApplicationIcon>
+    <StartupObject>D3Downloader.Program</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\app_icon.ico" LogicalName="app_icon.ico" />
+    <EmbeddedResource Include="Assets\d3forever_logo.png" LogicalName="d3forever_logo.png" />
+    <EmbeddedResource Include="Assets\ros_banner.jpg" LogicalName="ros_banner.jpg" />
+    <EmbeddedResource Include="Assets\vanilla_banner.jpg" LogicalName="vanilla_banner.jpg" />
+  </ItemGroup>
+
+</Project>

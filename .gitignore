@@ -1,0 +1,28 @@
+# Build results
+**/[Bb]in/
+**/[Oo]bj/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Ll]og/
+[Ll]ogs/
+publish*/
+
+# Keep release/Diablo3Forever.exe and release/SHA256SUMS.txt in the repo, ignore duplicate zip in git tree
+release/*.zip
+
+# Visual Studio / Rider / VS Code user files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
