@@ -23,7 +23,7 @@
 
 > ### **[Download `Diablo3Forever.exe` v1.4.0 (Standalone Windows x64 - Zero Dependencies)](https://github.com/EliteLevelSoftware/D3Forever/releases/download/v1.4.0/Diablo3Forever.exe)**
 > - **Version:** `v1.4.0`
-> - **SHA-256:** `7f792406d9156281b192b222ec4584b3bbcb8de016438e8ed2a88cc558b5edf3` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
+> - **SHA-256:** `a5c71e889a0df740db413dd73b2eee1ef7905fa6aa72272662e13fc96fbc5d00` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
 > - **Build Catalog & Provenance Tracker:** [`docs/Diablo3_Versions_Tracker_Enriched.xlsx`](docs/Diablo3_Versions_Tracker_Enriched.xlsx)
 > - Or browse **[GitHub Releases](https://github.com/EliteLevelSoftware/D3Forever/releases)**
 

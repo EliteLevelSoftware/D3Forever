@@ -18,7 +18,8 @@ namespace D3Downloader
     {
         Checking,
         Ok,
-        Offline
+        Offline,
+        Archive
     }
 
     public sealed class VersionSelectorForm : Form
@@ -713,10 +714,12 @@ namespace D3Downloader
             };
 
             var viewMoreRect = new Rectangle(16, BANNER_HEIGHT - 40, 238, 28);
+            var dossierBtnRect = new Rectangle(262, BANNER_HEIGHT - 40, 210, 28);
             var verBoxRect = new Rectangle(646, 26, 264, 48);
             var installBtnRect = new Rectangle(646, 84, 264, 42);
 
             bool hoverViewMore = false;
+            bool hoverDossier = false;
             bool hoverVerBox = false;
             bool hoverInstall = false;
 
@@ -791,6 +794,28 @@ namespace D3Downloader
                     e.Graphics.DrawString(vmText, vmFont, vmTextBrush, new Rectangle(viewMoreRect.X + 14, viewMoreRect.Y, viewMoreRect.Width - 18, viewMoreRect.Height), sfVm);
                 }
 
+                // Draw Historical Dossier & Patch Notes Button
+                using (var dPath = CreateRoundRect(dossierBtnRect, 4))
+                using (var dFill = new SolidBrush(hoverDossier ? Color.FromArgb(230, 36, 48, 70) : Color.FromArgb(215, 14, 18, 28)))
+                using (var dPen = new Pen(hoverDossier ? Color.FromArgb(245, 158, 11) : Color.FromArgb(60, 75, 105), 1f))
+                using (var dFont = new Font("Segoe UI", 8.25f, FontStyle.Bold))
+                using (var dTextBrush = new SolidBrush(hoverDossier ? Color.FromArgb(254, 240, 138) : Color.FromArgb(203, 213, 225)))
+                {
+                    e.Graphics.FillPath(dFill, dPath);
+                    e.Graphics.DrawPath(dPen, dPath);
+
+                    int sx = dossierBtnRect.X + 10, sy = dossierBtnRect.Y + 7;
+                    using var sp = new Pen(hoverDossier ? Color.FromArgb(245, 158, 11) : Color.FromArgb(160, 175, 200), 1.2f);
+                    e.Graphics.DrawRectangle(sp, sx, sy, 11, 13);
+                    e.Graphics.DrawLine(sp, sx + 2, sy + 3, sx + 9, sy + 3);
+                    e.Graphics.DrawLine(sp, sx + 2, sy + 6, sx + 9, sy + 6);
+                    e.Graphics.DrawLine(sp, sx + 2, sy + 9, sx + 6, sy + 9);
+
+                    var textRect = new Rectangle(dossierBtnRect.X + 22, dossierBtnRect.Y, dossierBtnRect.Width - 24, dossierBtnRect.Height);
+                    var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                    e.Graphics.DrawString("Historical Dossier & Notes", dFont, dTextBrush, textRect, sf);
+                }
+
                 using (var vbPath = CreateRoundRect(verBoxRect, 5))
                 using (var vbFill = new SolidBrush(Color.FromArgb(12, 16, 25)))
                 using (var vbPen = new Pen(hoverVerBox ? Color.FromArgb(79, 96, 130) : Color.FromArgb(46, 56, 77), 1f))
@@ -862,12 +887,14 @@ namespace D3Downloader
             banner.MouseMove += (_, e) =>
             {
                 bool hvm = viewMoreRect.Contains(e.Location);
+                bool hdo = dossierBtnRect.Contains(e.Location);
                 bool hvb = verBoxRect.Contains(e.Location);
                 bool hin = !_isInstalling && installBtnRect.Contains(e.Location);
-                banner.Cursor = (hvm || hvb || hin) ? Cursors.Hand : Cursors.Default;
-                if (hvm != hoverViewMore || hvb != hoverVerBox || hin != hoverInstall)
+                banner.Cursor = (hvm || hdo || hvb || hin) ? Cursors.Hand : Cursors.Default;
+                if (hvm != hoverViewMore || hdo != hoverDossier || hvb != hoverVerBox || hin != hoverInstall)
                 {
                     hoverViewMore = hvm;
+                    hoverDossier = hdo;
                     hoverVerBox = hvb;
                     hoverInstall = hin;
                     banner.Invalidate();
@@ -875,12 +902,25 @@ namespace D3Downloader
             };
             banner.MouseLeave += (_, _) =>
             {
-                hoverViewMore = hoverVerBox = hoverInstall = false;
+                hoverViewMore = hoverDossier = hoverVerBox = hoverInstall = false;
                 banner.Invalidate();
             };
             banner.MouseClick += async (_, e) =>
             {
                 if (e.Button != MouseButtons.Left) return;
+
+                if (dossierBtnRect.Contains(e.Location))
+                {
+                    var target = isRos ? _selectedRosBuild : _selectedVanillaBuild;
+                    using var dlg = new BuildDossierDialog(target);
+                    if (dlg.ShowDialog(this) == DialogResult.OK && dlg.SelectBuildRequested)
+                    {
+                        if (isRos) _selectedRosBuild = target;
+                        else _selectedVanillaBuild = target;
+                        banner.Invalidate();
+                    }
+                    return;
+                }
 
                 if (viewMoreRect.Contains(e.Location) || verBoxRect.Contains(e.Location))
                 {
@@ -1245,9 +1285,27 @@ namespace D3Downloader
                 e.Graphics.DrawString(item.Summary, subFont, subBrush, new RectangleF(10, 24, chip.Width - 18, 18));
             };
 
+            var chipTip = new ToolTip();
+            string reqNotice = item.RequiresOfflineArchive ? " [Requires Offline Archive]" : " [Live CDN Ready]";
+            chipTip.SetToolTip(chip, $"{item.DisplayTitle}{reqNotice}\n• Left-Click: Select & activate this build\n• Right-Click: Open Historical Archive Dossier & Original Patch Notes");
+
             chip.MouseEnter += (_, _) => { hover = true; chip.Invalidate(); };
             chip.MouseLeave += (_, _) => { hover = false; chip.Invalidate(); };
-            chip.MouseClick += (_, _) => onClick();
+            chip.MouseClick += (_, e) =>
+            {
+                if (e.Button == MouseButtons.Right)
+                {
+                    using var dlg = new BuildDossierDialog(item);
+                    if (dlg.ShowDialog(this) == DialogResult.OK && dlg.SelectBuildRequested)
+                    {
+                        onClick();
+                    }
+                }
+                else
+                {
+                    onClick();
+                }
+            };
 
             return chip;
         }
@@ -1268,6 +1326,13 @@ namespace D3Downloader
                     text = Color.FromArgb(86, 211, 100);
                     dot = Color.FromArgb(63, 185, 80);
                     label = "OK";
+                    break;
+                case CdnAvailability.Archive:
+                    bg = Color.FromArgb(40, 217, 119, 6);
+                    border = Color.FromArgb(140, 217, 119, 6);
+                    text = Color.FromArgb(251, 191, 36);
+                    dot = Color.FromArgb(217, 119, 6);
+                    label = "ARCHIVE";
                     break;
                 case CdnAvailability.Offline:
                     bg = Color.FromArgb(45, 248, 81, 73);
@@ -1323,6 +1388,12 @@ namespace D3Downloader
             {
                 _ = Task.Run(async () =>
                 {
+                    if (build.RequiresOfflineArchive)
+                    {
+                        _cdnStatuses[GetBuildKey(build)] = CdnAvailability.Archive;
+                        return;
+                    }
+
                     bool isOk = false;
                     try
                     {
@@ -1365,6 +1436,35 @@ namespace D3Downloader
                 };
                 menu.Items.Add(item);
             }
+
+            menu.Items.Add(new ToolStripSeparator());
+
+            var allTextItem = new ToolStripMenuItem("🌐 Download All Text Locales (Universal Dialogues & UI)")
+            {
+                BackColor = Color.FromArgb(16, 21, 32),
+                ForeColor = _selectedLocaleCode == "allText" ? Color.FromArgb(88, 166, 255) : Color.FromArgb(203, 213, 225)
+            };
+            allTextItem.Click += (_, _) =>
+            {
+                _selectedLocaleCode = "allText";
+                _selectedLocaleDisplay = "All Text Locales (Universal)";
+                parent.Invalidate();
+            };
+            menu.Items.Add(allTextItem);
+
+            var allLocalesItem = new ToolStripMenuItem("🌍 Download All Locales (Complete Audio & Cutscenes - ~35 GB)")
+            {
+                BackColor = Color.FromArgb(16, 21, 32),
+                ForeColor = _selectedLocaleCode == "allLocales" ? Color.FromArgb(88, 166, 255) : Color.FromArgb(203, 213, 225)
+            };
+            allLocalesItem.Click += (_, _) =>
+            {
+                _selectedLocaleCode = "allLocales";
+                _selectedLocaleDisplay = "All Locales Full (~35 GB)";
+                parent.Invalidate();
+            };
+            menu.Items.Add(allLocalesItem);
+
             menu.Show(parent, location);
         }
 
@@ -1429,6 +1529,29 @@ namespace D3Downloader
 
             string targetDir = Path.GetFullPath(_txtTargetLocation.Text.Trim());
             bool binariesOnly = isRos ? _chkRosBinariesOnly : _chkVanillaBinariesOnly;
+
+            if (selectedBuild.RequiresOfflineArchive)
+            {
+                var answer = MessageBox.Show(
+                    this,
+                    $"Diablo III {selectedBuild.Version}.{selectedBuild.BuildNumber} (CASC) requires an offline archive source because Blizzard purged older CASC data chunks from the live CDN when Patch 2.8.0 launched.\n\n" +
+                    "Would you like to install the latest 64-bit client (2.8.0.99920) directly from Blizzard's live CDN instead?\n\n" +
+                    "(Click 'Yes' for Live 2.8.0, or 'No' to cancel and choose an offline archive)",
+                    "Diablo 3 Forever — Blizzard CDN Notice",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Information);
+
+                if (answer == DialogResult.Yes)
+                {
+                    selectedBuild = D3BuildCatalog.AllBuilds.First(b => b.BuildNumber == 99920);
+                    if (isRos) _selectedRosBuild = selectedBuild;
+                    _rosBannerPanel.Invalidate();
+                }
+                else
+                {
+                    return;
+                }
+            }
 
             _isInstalling = true;
             _rosBannerPanel.Invalidate();

@@ -37,6 +37,30 @@
 - **Zero Internet Required:** Perfect for retro gaming, LAN parties, air-gapped systems, and preserving Diablo III forever.
 - **Auto-Detection in Main Launcher:** When clicking "INSTALL / LAUNCH" on the main screen, Diablo 3 Forever automatically detects your offline archive and uses it as an instant local cache before falling back to Blizzard's CDN!
 
+### 5. Historical "Time Capsule" Dossier & Real Blizzard Patch Notes Viewer
+- **The Problem:** With 91 builds in the archive, users frequently wondered: *"What actually changed between 1.0.3 and 1.0.4?"* or *"When was Inferno difficulty nerfed?"*
+- **The Upgrade:** Every single version chip now features an interactive **Historical Archive Dossier**:
+  - Click the **📜 DOSSIER** button or right-click any version chip in the UI to open a dedicated modal.
+  - Displays original Blizzard official patch notes for that exact update.
+  - Highlights historic milestone badges (e.g. *"Loot 2.0 Debut"*, *"Auction House Shut Down"*, *"Paragon 1.0 Added"*, *"Monster Power System Added"*, *"Inferno Nerf"*).
+  - Includes release dates, build IDs, engine architectures (MPQ 32-bit vs CASC 64-bit), and official Blizzard forum announcement references.
+
+---
+
+## 🛠️ Bug Fixes & Refinements
+
+1. **Continuous Granular Progress Bar:**
+   - Fixed an issue where the main window progress bar stayed at 0% or jumped straight to 100%. Progress is now calculated and rendered continuously from 0% to 100% across all file extraction, CASC chunk downloads, and MPQ patch steps.
+2. **Multi-Language Selector & Preservation:**
+   - Added options to download **"🌐 All Text Locales (Universal Dialogues & UI — ~380 MB)"** and **"🌍 All Locales (Complete Audio & Cutscenes — ~35 GB)"**.
+   - Fixed an issue where changing languages wiped out previously downloaded CASC `data.*` container chunks. Existing valid CASC chunks are preserved, downloading only the delta for the newly selected language.
+3. **CASC Version Enforcement & Amber `ARCHIVE` Badging:**
+   - Proved and addressed Blizzard CDN chunk retention: Blizzard has purged cold data chunks for retired historical CASC builds (`2.7.3`–`2.7.8`), returning HTTP 404 for their payloads, while keeping all **83 Legacy MPQ builds** and live `2.8.0` intact.
+   - Retired CASC builds are now prominently badged with an amber `ARCHIVE` pill instead of a misleading green `OK`.
+   - Selecting an `ARCHIVE` build prompts the user clearly to use their local backup archive or switch to live `2.8.0`, preventing silent fallback.
+4. **Locale Launch Shortcuts & Batch Script:**
+   - Installer automatically writes `-launch -locale {locale}` into desktop shortcuts, updates `D3Prefs.txt`, and generates an interactive `Launch-Game.bat`.
+
 ---
 
 ## ⚡ CLI Command Line Additions
@@ -61,4 +85,4 @@
 
 | File | SHA-256 Checksum |
 | :--- | :--- |
-| `Diablo3Forever.exe` | `7f792406d9156281b192b222ec4584b3bbcb8de016438e8ed2a88cc558b5edf3` |
+| `Diablo3Forever.exe` | `a5c71e889a0df740db413dd73b2eee1ef7905fa6aa72272662e13fc96fbc5d00` |

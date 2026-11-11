@@ -416,6 +416,20 @@ namespace D3Downloader
                     return 0;
                 }
 
+                if (selectedBuild.RequiresOfflineArchive && string.IsNullOrWhiteSpace(localArchiveSource))
+                {
+                    log("========================================================================");
+                    log($"[ERROR] Diablo III {selectedBuild.Version}.{selectedBuild.BuildNumber} (64-bit CASC) data chunks are retired/offline.");
+                    log("        Blizzard purged historical CASC data chunks from the live CDN when Patch 2.8.0 launched.");
+                    log("        To install this version, specify an offline archive directory via --archive-cache <path>.");
+                    log("        To download directly from Blizzard's live CDN right now, choose:");
+                    log("          • 2.8.0.99920 (Live Global Retail 64-bit Client)");
+                    log("          • 2.8.1.101167 (China Live Retail 64-bit Client)");
+                    log("          • Any of the 83 official Legacy MPQ releases (Vanilla 1.0.1 - RoS 2.1.2) which remain 100% active on Blizzard's CDN!");
+                    log("========================================================================");
+                    return 1;
+                }
+
                 Directory.CreateDirectory(targetDir);
                 string dataDir = Path.Combine(targetDir, "Data");
                 string configDir = Path.Combine(dataDir, "config");
@@ -424,6 +438,8 @@ namespace D3Downloader
                 Directory.CreateDirectory(configDir);
                 Directory.CreateDirectory(indicesDir);
                 Directory.CreateDirectory(cascDataDir);
+
+                onProgress?.Invoke(2.0, $"Querying Blizzard NGDP endpoints ({selectedBuild.ProductCode})...");
 
                 // Step 1: Query NGDP versions & cdns
                 string prodCode = string.IsNullOrWhiteSpace(selectedBuild?.ProductCode) ? "d3" : selectedBuild.ProductCode;
@@ -448,6 +464,7 @@ namespace D3Downloader
                 Console.WriteLine($"      CDNConfig    : {versionInfo.CdnConfig}");
                 Console.WriteLine($"      CDN Hosts    : {string.Join(", ", _cdnHosts)}");
 
+                onProgress?.Invoke(5.0, "Downloading BuildConfig and CDNConfig manifests...");
                 // Step 2: Download BuildConfig, CDNConfig, ProductConfig
                 Console.WriteLine("[2/7] Downloading BuildConfig and CDNConfig manifests...");
                 byte[] buildCfgBytes = await DownloadConfigFileAsync(configDir, _cdnPath + "/config", versionInfo.BuildConfig);
@@ -487,6 +504,7 @@ namespace D3Downloader
                 cdnCfg.TryGetValue("file-index", out string fileIndexHash);
                 cdnCfg.TryGetValue("patch-file-index", out string patchFileIndexHash);
 
+                onProgress?.Invoke(10.0, $"Downloading {archives.Length} CDN archive indices...");
                 // Step 3: Download CDN archive .index files & build archive-group.index
                 Console.WriteLine($"[3/7] Downloading {archives.Length} CDN archive indices...");
                 var archiveIndexMap = await DownloadAndParseIndicesAsync(
@@ -502,6 +520,7 @@ namespace D3Downloader
 
                 Console.WriteLine($"      Indexed {archiveIndexMap.Count:N0} unique BLTE chunks across {archives.Length} CDN archives.");
 
+                onProgress?.Invoke(16.0, "Decoding Encoding, Install, and Download manifests...");
                 // Step 4: Download & parse Encoding, Install, and Download manifests
                 Console.WriteLine("[4/7] Downloading and decoding Encoding, Install, and Download manifests...");
                 string[] encodingHashes = buildCfg["encoding"].Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -538,6 +557,7 @@ namespace D3Downloader
                 // Step 5: Write .build.info, Launcher.db, and .patch.result
                 Console.WriteLine("[5/7] Generating .build.info, Launcher.db, and .patch.result...");
                 WriteBuildMetadataFiles(targetDir, region, locale, versionInfo, cdnInfo, installCKey);
+                onProgress?.Invoke(20.0, "Extracting game executables and runtime binaries...");
 
                 // Step 6: Extract Install Manifest files (Diablo III64.exe, DLLs, CEF Scene, etc.)
                 var installToProcess = dryRunLimit > 0
@@ -545,15 +565,40 @@ namespace D3Downloader
                     : installEntries;
 
                 Console.WriteLine($"[6/7] Extracting {installToProcess.Count:N0} game executables & DLLs into installation root...");
-                await ExtractInstallFilesAsync(targetDir, installToProcess, ckeyToEkey, archiveIndexMap, archives, maxConcurrency);
 
                 if (binariesOnly)
                 {
+                    await ExtractInstallFilesAsync(
+                        targetDir,
+                        installToProcess,
+                        ckeyToEkey,
+                        archiveIndexMap,
+                        archives,
+                        maxConcurrency,
+                        onProgress: (pct, msg) =>
+                        {
+                            double mapped = 20.0 + (pct * 0.80);
+                            onProgress?.Invoke(mapped, msg);
+                        });
+
                     log("[7/7] Binaries-Only mode selected: skipping CASC data.NNN archive download.");
-                    onProgress?.Invoke(100, "Binaries extraction complete!");
+                    onProgress?.Invoke(100, $"Binaries extraction complete for {selectedBuild.Version}.{selectedBuild.BuildNumber}!");
                 }
                 else
                 {
+                    await ExtractInstallFilesAsync(
+                        targetDir,
+                        installToProcess,
+                        ckeyToEkey,
+                        archiveIndexMap,
+                        archives,
+                        maxConcurrency,
+                        onProgress: (pct, msg) =>
+                        {
+                            double mapped = 20.0 + (pct * 0.15);
+                            onProgress?.Invoke(mapped, msg);
+                        });
+
                     // Step 7: Build CASC Data\data (data.NNN, 16 .idx files, and shmem)
                     var cascToProcess = dryRunLimit > 0
                         ? downloadEntries.Take(dryRunLimit).ToList()
@@ -576,7 +621,12 @@ namespace D3Downloader
                             cascToProcess,
                             archiveIndexMap,
                             archives,
-                            maxConcurrency);
+                            maxConcurrency,
+                            onProgress: (pct, msg) =>
+                            {
+                                double mapped = 35.0 + (pct * 0.65);
+                                onProgress?.Invoke(mapped, msg);
+                            });
 
                         cascWriter.WriteIndicesAndShmem();
                     }
@@ -584,7 +634,7 @@ namespace D3Downloader
 
                 if (configureShortcutFirewall)
                 {
-                    ConfigureShortcutAndFirewall(targetDir);
+                    ConfigureShortcutAndFirewall(targetDir, locale);
                 }
 
                 log("========================================================================");
@@ -683,12 +733,22 @@ namespace D3Downloader
             }
         }
 
-        private static void ConfigureShortcutAndFirewall(string targetDir)
+        private static void ConfigureShortcutAndFirewall(string targetDir, string locale = "enUS")
         {
             Console.WriteLine("[Post-Install] Configuring Public Desktop shortcut and Windows Defender Firewall...");
             string exe64 = Path.Combine(targetDir, "x64", "Diablo III64.exe");
             string exe32 = Path.Combine(targetDir, "Diablo III.exe");
             string shortcutTarget = File.Exists(exe64) ? exe64 : exe32;
+            string launchLocaleArg = (locale == "allText" || locale == "allLocales") ? "enUS" : locale;
+
+            // Write helper Launch-Game.bat
+            try
+            {
+                string batPath = Path.Combine(targetDir, "Launch-Game.bat");
+                string batContent = $"@echo off\r\ncd /d \"%~dp0\"\r\nif exist \"x64\\Diablo III64.exe\" (\r\n    start \"\" \"x64\\Diablo III64.exe\" -launch -locale {launchLocaleArg}\r\n) else (\r\n    start \"\" \"Diablo III.exe\" -launch -locale {launchLocaleArg}\r\n)\r\n";
+                File.WriteAllText(batPath, batContent);
+            }
+            catch { }
 
             string psCmd = $@"
 $ErrorActionPreference = 'SilentlyContinue'
@@ -698,7 +758,7 @@ $lnk = Join-Path $pub 'Diablo III.lnk'
 $wsh = New-Object -ComObject WScript.Shell
 $s = $wsh.CreateShortcut($lnk)
 $s.TargetPath = '{shortcutTarget.Replace("'", "''")}'
-$s.Arguments = '-launch'
+$s.Arguments = '-launch -locale {launchLocaleArg}'
 $s.WorkingDirectory = '{targetDir.Replace("'", "''")}'
 $s.IconLocation = '{shortcutTarget.Replace("'", "''")},0'
 $s.Description = 'Launch Diablo III'
@@ -1384,7 +1444,8 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             Dictionary<string, string> ckeyToEkey,
             Dictionary<string, ArchiveEntryLoc> archiveIndexMap,
             string[] archives,
-            int maxConcurrency)
+            int maxConcurrency,
+            Action<double, string> onProgress = null)
         {
             using var sem = new SemaphoreSlim(maxConcurrency);
             int completed = 0;
@@ -1403,7 +1464,9 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                     if (File.Exists(outPath) && new FileInfo(outPath).Length == item.UncompressedSize)
                     {
                         Interlocked.Add(ref bytesDone, item.UncompressedSize);
-                        Interlocked.Increment(ref completed);
+                        int curSkipped = Interlocked.Increment(ref completed);
+                        double pct = (curSkipped * 100.0) / Math.Max(1, items.Count);
+                        onProgress?.Invoke(pct, $"Verifying: {curSkipped}/{items.Count} files ({(curSkipped * 100.0 / items.Count):F0}%)");
                         return;
                     }
 
@@ -1418,11 +1481,14 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
 
                     long curBytes = Interlocked.Add(ref bytesDone, decoded.Length);
                     int curFiles = Interlocked.Increment(ref completed);
-                    if (curFiles % 10 == 0 || curFiles == items.Count)
+                    double curPct = (curFiles * 100.0) / Math.Max(1, items.Count);
+                    double mbps = (curBytes / 1048576.0) / Math.Max(0.1, sw.Elapsed.TotalSeconds);
+                    string msg = $"Extracting: {curFiles}/{items.Count} files | {curBytes / 1048576.0:F1}/{totalBytes / 1048576.0:F1} MB ({curPct:F1}%) | {mbps:F1} MB/s";
+                    if (curFiles % 5 == 0 || curFiles == items.Count)
                     {
-                        double mbps = (curBytes / 1048576.0) / Math.Max(0.1, sw.Elapsed.TotalSeconds);
-                        Console.WriteLine($"      [Install] {curFiles}/{items.Count} files | {curBytes / 1048576.0:F1}/{totalBytes / 1048576.0:F1} MB ({(curFiles * 100.0 / items.Count):F1}%) | {mbps:F1} MB/s");
+                        Console.WriteLine($"      [Install] {curFiles}/{items.Count} files | {curBytes / 1048576.0:F1}/{totalBytes / 1048576.0:F1} MB ({curPct:F1}%) | {mbps:F1} MB/s");
                     }
+                    onProgress?.Invoke(curPct, msg);
                 }
                 finally
                 {
@@ -1456,7 +1522,8 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             List<DownloadItem> items,
             Dictionary<string, ArchiveEntryLoc> archiveIndexMap,
             string[] archives,
-            int maxConcurrency)
+            int maxConcurrency,
+            Action<double, string> onProgress = null)
         {
             var perArchive = new List<ArchiveSlice>[archives.Length];
             for (int i = 0; i < archives.Length; i++) perArchive[i] = new List<ArchiveSlice>();
@@ -1543,11 +1610,13 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                 long b = Interlocked.Add(ref downloadedBytes, bytesAdded);
                 long now = sw.ElapsedMilliseconds;
                 long prev = Interlocked.Read(ref lastLogTick);
-                if (force || f == totalFiles || (now - prev >= 1000 && Interlocked.CompareExchange(ref lastLogTick, now, prev) == prev))
+                if (force || f == totalFiles || (now - prev >= 300 && Interlocked.CompareExchange(ref lastLogTick, now, prev) == prev))
                 {
                     double pct = totalExpectedBytes > 0 ? (b * 100.0 / totalExpectedBytes) : 100.0;
                     double mbps = (b / 1048576.0) / Math.Max(0.1, sw.Elapsed.TotalSeconds);
+                    string msg = $"Downloading CASC data: {pct:F1}% | {b / 1048576.0:F1}/{totalExpectedBytes / 1048576.0:F1} MB | {mbps:F1} MB/s";
                     Console.WriteLine($"      [CASC] {pct,6:F2}% | {b / 1048576.0,8:F1} / {totalExpectedBytes / 1048576.0,8:F1} MB | {f,7:N0} / {totalFiles:N0} files | {mbps,6:F1} MB/s");
+                    onProgress?.Invoke(pct, msg);
                 }
             }
 
@@ -1812,9 +1881,14 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             _cascDataDir = cascDataDir;
             for (int i = 0; i < 16; i++) _buckets[i] = new List<IdxRecord>(20000);
 
-            // Clean any partial old data/idx files so build is deterministic
-            foreach (var f in Directory.GetFiles(_cascDataDir, "*.idx")) File.Delete(f);
-            foreach (var f in Directory.GetFiles(_cascDataDir, "data.*")) File.Delete(f);
+            // If existing data.* files exist and are populated, keep them rather than destroying user data
+            bool hasExistingData = File.Exists(Path.Combine(_cascDataDir, "data.000")) &&
+                                   new FileInfo(Path.Combine(_cascDataDir, "data.000")).Length > 1024 * 1024;
+            if (!hasExistingData)
+            {
+                foreach (var f in Directory.GetFiles(_cascDataDir, "*.idx")) { try { File.Delete(f); } catch { } }
+                foreach (var f in Directory.GetFiles(_cascDataDir, "data.*")) { try { File.Delete(f); } catch { } }
+            }
 
             // Generate 7-byte cross-link seed from MD5(hostname + "data/data")
             using var md5 = MD5.Create();

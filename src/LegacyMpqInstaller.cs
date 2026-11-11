@@ -33,21 +33,24 @@ namespace D3Downloader
         public string BaseDirectUrl { get; init; } = D3BuildCatalog.VanillaDirectBaseUrl;
         public string MfilFileName { get; init; } = D3BuildCatalog.VanillaMfilFileName;
         public int BaseBuildNumber { get; init; } = 8370;
-        public string? CdnConfigUrl { get; init; }
+        public string CdnConfigUrl { get; init; }
+        public bool RequiresOfflineArchive { get; init; } = false;
 
-        public string CheckUrl => !string.IsNullOrEmpty(CdnConfigUrl)
-            ? CdnConfigUrl
-            : (IsCasc
-                ? $"http://us.patch.battle.net:1119/{ProductCode}/versions"
-                : (BuildNumber > BaseBuildNumber
-                    ? $"{BaseDirectUrl}/Updates/d3-0-{BuildNumber}-Win-final.MPQ"
-                    : $"{BaseDirectUrl}/Data_D3/PC/MPQs/base-Win.mpq"));
+        public string CheckUrl => RequiresOfflineArchive
+            ? ""
+            : (!string.IsNullOrEmpty(CdnConfigUrl)
+                ? CdnConfigUrl
+                : (IsCasc
+                    ? $"http://us.patch.battle.net:1119/{ProductCode}/versions"
+                    : (BuildNumber > BaseBuildNumber
+                        ? $"{BaseDirectUrl}/Updates/d3-0-{BuildNumber}-Win-final.MPQ"
+                        : $"{BaseDirectUrl}/Data_D3/PC/MPQs/base-Win.mpq")));
 
         public string DisplayTitle => IsCasc
-            ? $"{Version}.{BuildNumber} Ã¢â‚¬â€ [CASC / {ProductCode} 64-bit] ({Summary})"
+            ? $"{Version}.{BuildNumber} — [CASC / {ProductCode} 64-bit] ({Summary})"
             : (IsRoS
-                ? $"{Version}.{BuildNumber} Ã¢â‚¬â€ [{Category} RoS MPQ 32-bit] ({ReleaseDate} - {Summary})"
-                : $"{Version}.{BuildNumber} Ã¢â‚¬â€ [{Category} Vanilla MPQ 32-bit] ({ReleaseDate} - {Summary})");
+                ? $"{Version}.{BuildNumber} — [{Category} RoS MPQ 32-bit] ({ReleaseDate} - {Summary})"
+                : $"{Version}.{BuildNumber} — [{Category} Vanilla MPQ 32-bit] ({ReleaseDate} - {Summary})");
 
         public override string ToString() => DisplayTitle;
     }
@@ -71,12 +74,12 @@ namespace D3Downloader
             // =========================================================================
             new() { Version = "2.8.0", BuildNumber = 99920, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "Live Retail", Summary = "Global Live Retail Client (64-bit CASC)" },
             new() { Version = "2.8.1", BuildNumber = 101167, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3cn", ReleaseDate = "CN CDN", Summary = "Patch 2.8.1 Production Client (64-bit CASC)" },
-            new() { Version = "2.7.8", BuildNumber = 97927, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-09-10", Summary = "Patch 2.7.8 Post-Loc Production Build", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/3c/08/3c08a11365511a36115399741311d6a1" },
-            new() { Version = "2.7.7", BuildNumber = 93903, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-02-06", Summary = "Patch 2.7.7a Production Release Candidate 2", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/0e/49/0e49135ccc3ae6496e78c92e280da93f" },
-            new() { Version = "2.7.7", BuildNumber = 92326, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-01-09", Summary = "Patch 2.7.7 Production Release Candidate 1", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/ef/5d/ef5defe7bbf218a323336273c86be31c" },
-            new() { Version = "2.7.6", BuildNumber = 91007, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2023-09-12", Summary = "Patch 2.7.6 Solo Self-Found Update (64-bit CASC)", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/80/70/8070cfaf79f4ce7338a895fff28b135d" },
-            new() { Version = "2.7.4", BuildNumber = 84161, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2022-08-23", Summary = "Patch 2.7.4 Angelic Crucibles Update (64-bit CASC)", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/51/94/5194054cfa6480884c9a451b6f1107a3" },
-            new() { Version = "2.7.3", BuildNumber = 82785, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3cn", ReleaseDate = "2022-04-12", Summary = "Patch 2.7.3 Echoing Nightmare Client (64-bit CASC)", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/ce/be/cebe6c6f58867665a442156284766fd2" },
+            new() { Version = "2.7.8", BuildNumber = 97927, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-09-10", Summary = "Patch 2.7.8 Post-Loc Production Build", RequiresOfflineArchive = true, CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/3c/08/3c08a11365511a36115399741311d6a1" },
+            new() { Version = "2.7.7", BuildNumber = 93903, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-02-06", Summary = "Patch 2.7.7a Production Release Candidate 2", RequiresOfflineArchive = true, CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/0e/49/0e49135ccc3ae6496e78c92e280da93f" },
+            new() { Version = "2.7.7", BuildNumber = 92326, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-01-09", Summary = "Patch 2.7.7 Production Release Candidate 1", RequiresOfflineArchive = true, CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/ef/5d/ef5defe7bbf218a323336273c86be31c" },
+            new() { Version = "2.7.6", BuildNumber = 91007, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2023-09-12", Summary = "Patch 2.7.6 Solo Self-Found Update (64-bit CASC)", RequiresOfflineArchive = true, CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/80/70/8070cfaf79f4ce7338a895fff28b135d" },
+            new() { Version = "2.7.4", BuildNumber = 84161, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2022-08-23", Summary = "Patch 2.7.4 Angelic Crucibles Update (64-bit CASC)", RequiresOfflineArchive = true, CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/51/94/5194054cfa6480884c9a451b6f1107a3" },
+            new() { Version = "2.7.3", BuildNumber = 82785, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3cn", ReleaseDate = "2022-04-12", Summary = "Patch 2.7.3 Echoing Nightmare Client (64-bit CASC)", RequiresOfflineArchive = true, CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/ce/be/cebe6c6f58867665a442156284766fd2" },
             new() { Version = "2.1.2", BuildNumber = 28709, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = RosMfilFileName, ReleaseDate = "2015-01-13", Summary = "Patch 2.1.2 (Ancient Items, Conduit Pylon Rework)" },
             new() { Version = "2.1.1", BuildNumber = 27255, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-27255-35F65D5686569C9A188AC0264ED26583.mfil", ReleaseDate = "2014-09-23", Summary = "Patch 2.1.1 (Kadala Bloodshard Costs, Pet Toughness)" },
             new() { Version = "2.1.0", BuildNumber = 26451, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-26451-6032812D57D4CE684194552583B4275F.mfil", ReleaseDate = "2014-08-26", Summary = "Major Update (Greater Rifts, Legendary Gems, The Vault)" },
@@ -91,7 +94,7 @@ namespace D3Downloader
             // =========================================================================
             // REAPER OF SOULS Ã¢â‚¬â€ PUBLIC TEST REALM (PTR)
             // =========================================================================
-            new() { Version = "2.7.8", BuildNumber = 96670, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Ptr, ProductCode = "d3t", ReleaseDate = "2024-08-20", Summary = "Patch 2.7.8 Public Test Realm Client (64-bit CASC)" },
+            new() { Version = "2.7.8", BuildNumber = 96670, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Ptr, ProductCode = "d3t", ReleaseDate = "2024-08-20", Summary = "Patch 2.7.8 Public Test Realm Client (64-bit CASC)", RequiresOfflineArchive = true },
             new() { Version = "2.1.2", BuildNumber = 28709, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Ptr, BaseBuildNumber = 23119, BaseDirectUrl = RosPtrDirectBaseUrl, MfilFileName = "d3t-28709-D329E14E226965F76BDFDBC8BA9AD34C.mfil", ReleaseDate = "2015-01-08", Summary = "Patch 2.1.2 PTR Release Candidate Build" },
             new() { Version = "2.1.2", BuildNumber = 28341, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Ptr, BaseBuildNumber = 23119, BaseDirectUrl = RosPtrDirectBaseUrl, MfilFileName = "d3t-28341-16554336E3E1757B9C0BB33438C527AB.mfil", ReleaseDate = "2014-11-20", Summary = "Patch 2.1.2 PTR Wave 1 (Ancient Items Debut)" },
             new() { Version = "2.1.0", BuildNumber = 26370, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Ptr, BaseBuildNumber = 23119, BaseDirectUrl = RosPtrDirectBaseUrl, MfilFileName = "d3t-26370-C33663E1AE5D42CDDAFA24FFE2118D94.mfil", ReleaseDate = "2014-08-06", Summary = "Patch 2.1.0 PTR Release Candidate Build" },
@@ -176,7 +179,7 @@ namespace D3Downloader
             new() { Version = "Beta", BuildNumber = 7162, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "", ReleaseDate = "2011-08-18", Summary = "Original Vanilla Friends & Family Beta Base Client" },
         };
 
-        public static D3BuildCatalogItem? Resolve(string query)
+        public static D3BuildCatalogItem Resolve(string query)
         {
             if (string.IsNullOrWhiteSpace(query)) return null;
             string q = query.Trim().ToLowerInvariant();
@@ -549,13 +552,30 @@ namespace D3Downloader
             }
 
             // Step 4: Full Production Client Mode: download multi-GB MPQs listed in .mfil
+            bool isAllText = locale.Equals("allText", StringComparison.OrdinalIgnoreCase);
+            bool isAllLocales = locale.Equals("allLocales", StringComparison.OrdinalIgnoreCase);
+
             var targetEntries = allMfilEntries
-                .Where(e => (string.IsNullOrWhiteSpace(e.Tag) ||
-                             e.Tag.Equals("base", StringComparison.OrdinalIgnoreCase) ||
-                             e.Tag.Equals("Win", StringComparison.OrdinalIgnoreCase) ||
-                             e.Tag.Equals(locale, StringComparison.OrdinalIgnoreCase)) &&
-                            !e.RelativePath.EndsWith("base-Win.mpq", StringComparison.OrdinalIgnoreCase) &&
-                            !e.RelativePath.StartsWith("Updates", StringComparison.OrdinalIgnoreCase))
+                .Where(e => {
+                    if (e.RelativePath.EndsWith("base-Win.mpq", StringComparison.OrdinalIgnoreCase) ||
+                        e.RelativePath.StartsWith("Updates", StringComparison.OrdinalIgnoreCase))
+                        return false;
+
+                    if (string.IsNullOrWhiteSpace(e.Tag) ||
+                        e.Tag.Equals("base", StringComparison.OrdinalIgnoreCase) ||
+                        e.Tag.Equals("Win", StringComparison.OrdinalIgnoreCase))
+                        return true;
+
+                    if (isAllLocales) return true;
+
+                    if (isAllText)
+                    {
+                        return e.RelativePath.EndsWith("_Text.mpq", StringComparison.OrdinalIgnoreCase) ||
+                               e.Tag.Equals("enUS", StringComparison.OrdinalIgnoreCase);
+                    }
+
+                    return e.Tag.Equals(locale, StringComparison.OrdinalIgnoreCase);
+                })
                 .ToList();
 
             long totalBytes = targetEntries.Sum(e => e.Size);
