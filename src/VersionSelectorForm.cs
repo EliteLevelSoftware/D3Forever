@@ -803,6 +803,8 @@ namespace D3Downloader
             };
             banner.MouseClick += async (_, e) =>
             {
+                if (e.Button != MouseButtons.Left) return;
+
                 if (viewMoreRect.Contains(e.Location) || verBoxRect.Contains(e.Location))
                 {
                     if (isRos) ToggleRosDrawer();
@@ -811,14 +813,6 @@ namespace D3Downloader
                 else if (!_isInstalling && installBtnRect.Contains(e.Location))
                 {
                     await StartTileInstallAsync(isRos);
-                }
-            };
-            banner.MouseDown += async (_, e) =>
-            {
-                if (viewMoreRect.Contains(e.Location) || verBoxRect.Contains(e.Location))
-                {
-                    if (isRos) ToggleRosDrawer();
-                    else ToggleVanillaDrawer();
                 }
             };
 
