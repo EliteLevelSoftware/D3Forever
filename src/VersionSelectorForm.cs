@@ -173,7 +173,9 @@ namespace D3Downloader
 
             int hoverWinBtn = -1; // 0=min, 1=close
             bool hoverLocale = false;
+            bool hoverBackup = false;
 
+            var backupBtnRect = new Rectangle(465, 22, 185, 30);
             var localeRect = new Rectangle(668, 22, 196, 30);
             var minRect = new Rectangle(890, 22, 32, 30);
             var closeRect = new Rectangle(926, 22, 32, 30);
@@ -242,6 +244,21 @@ namespace D3Downloader
                 }
                 DrawChevron(e.Graphics, new Point(localeRect.Right - 14, localeRect.Y + 15), false, Color.FromArgb(148, 163, 184));
 
+                // Backup All Versions Button (Toolbar)
+                using (var bkPath = CreateRoundRect(backupBtnRect, 5))
+                using (var bkFill = new SolidBrush(hoverBackup ? Color.FromArgb(32, 44, 66) : Color.FromArgb(18, 24, 38)))
+                using (var bkBorder = new Pen(hoverBackup ? Color.FromArgb(245, 158, 11) : Color.FromArgb(60, 80, 115), hoverBackup ? 1.4f : 1f))
+                {
+                    e.Graphics.FillPath(bkFill, bkPath);
+                    e.Graphics.DrawPath(bkBorder, bkPath);
+                }
+                using (var bkFont = new Font("Segoe UI", 8.25f, FontStyle.Bold))
+                using (var bkBrush = new SolidBrush(hoverBackup ? Color.FromArgb(254, 243, 199) : Color.FromArgb(226, 232, 240)))
+                {
+                    var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                    e.Graphics.DrawString("📦 BACKUP ALL BUILDS", bkFont, bkBrush, backupBtnRect, sf);
+                }
+
                 // Crisp Vector Window Buttons (Minimize & Close only)
                 DrawMinimizeButton(e.Graphics, minRect, hoverWinBtn == 0);
                 DrawCloseButton(e.Graphics, closeRect, hoverWinBtn == 1);
@@ -259,12 +276,14 @@ namespace D3Downloader
                 else if (closeRect.Contains(e.Location)) newHover = 1;
 
                 bool newLoc = localeRect.Contains(e.Location);
-                _topToolbar.Cursor = (newHover >= 0 || newLoc) ? Cursors.Hand : Cursors.Default;
+                bool newBackup = backupBtnRect.Contains(e.Location);
+                _topToolbar.Cursor = (newHover >= 0 || newLoc || newBackup) ? Cursors.Hand : Cursors.Default;
 
-                if (newHover != hoverWinBtn || newLoc != hoverLocale)
+                if (newHover != hoverWinBtn || newLoc != hoverLocale || newBackup != hoverBackup)
                 {
                     hoverWinBtn = newHover;
                     hoverLocale = newLoc;
+                    hoverBackup = newBackup;
                     _topToolbar.Invalidate();
                 }
             };
@@ -272,6 +291,7 @@ namespace D3Downloader
             {
                 hoverWinBtn = -1;
                 hoverLocale = false;
+                hoverBackup = false;
                 _topToolbar.Invalidate();
             };
             _topToolbar.MouseDown += (_, e) =>
@@ -279,6 +299,12 @@ namespace D3Downloader
                 if (e.Button != MouseButtons.Left) return;
                 if (closeRect.Contains(e.Location)) { Close(); return; }
                 if (minRect.Contains(e.Location)) { WindowState = FormWindowState.Minimized; return; }
+                if (backupBtnRect.Contains(e.Location))
+                {
+                    using var dlg = new BackupDialog(_txtTargetLocation?.Text ?? @"C:\Games\Diablo III");
+                    dlg.ShowDialog(this);
+                    return;
+                }
                 if (localeRect.Contains(e.Location))
                 {
                     ShowLocaleMenu(_topToolbar, new Point(localeRect.X, localeRect.Bottom + 2));

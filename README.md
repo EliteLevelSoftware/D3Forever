@@ -1,10 +1,10 @@
 ﻿# Diablo 3 Forever
 
-**Diablo 3 Forever** (v1.1.1) is a standalone, zero-dependency open-source archival downloader and multi-version installer that streams and reconstructs **91 official Diablo III builds** (spanning retail releases, Public Test Realm PTR iterations, and closed/open beta milestone clients from 2011 to 2025) **100% directly from Blizzard's official CDN servers**.
+**Diablo 3 Forever** (v1.2.0) is a standalone, zero-dependency open-source archival downloader and multi-version installer that streams and reconstructs **91 official Diablo III builds** (spanning retail releases, Public Test Realm PTR iterations, and closed/open beta milestone clients from 2011 to 2025) **100% directly from Blizzard's official CDN servers**.
 
-> ### **[Download `Diablo3Forever.exe` v1.1.1 (Standalone Windows x64 - Zero Dependencies)](https://github.com/EliteLevelSoftware/D3Forever/releases/download/v1.1.1/Diablo3Forever.exe)**
-> - **Version:** `v1.1.1`
-> - **SHA-256:** `e65a570db744492d2e97ac54980db0a7fafea28efb9f5d6ce7bc8e111fd916bd` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
+> ### **[Download `Diablo3Forever.exe` v1.2.0 (Standalone Windows x64 - Zero Dependencies)](https://github.com/EliteLevelSoftware/D3Forever/releases/download/v1.2.0/Diablo3Forever.exe)**
+> - **Version:** `v1.2.0`
+> - **SHA-256:** `750578b4a2eab1481419854634deb7b6a455f379c97a910ef894a348ba15f959` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
 > - **Build Catalog & Provenance Tracker:** [`docs/Diablo3_Versions_Tracker_Enriched.xlsx`](docs/Diablo3_Versions_Tracker_Enriched.xlsx)
 > - Or browse **[GitHub Releases](https://github.com/EliteLevelSoftware/D3Forever/releases)**
 
@@ -15,20 +15,39 @@
 ## Key Features
 
 - **100% Direct from Official Blizzard CDNs:** Every byte is fetched directly from Blizzard's official distribution servers (`us.patch.battle.net`, `us.cdn.blizzard.com`, and `dist.blizzard.com.edgesuite.net`). Zero third-party mirrors, re-uploads, or modified game binaries are used.
+- **Bulk Archival & Cold Storage Backup Engine:** Backup and preserve the entire 91-build catalog to an external hard drive, USB storage, or network share (NAS) via a single click or CLI command:
+  - **⚡ Fast Binaries Archive (~3.2 GB Total):** Downloads and patches standalone ready-to-run executables (`Diablo III.exe`), DLLs, and configs for all 91 builds organized into subfolders (`\Vanilla\Retail\1.0.8a.16603`, `\RoS\PTR\2.1.2.28709`, etc.). Drops right into any existing Diablo III folder to immediately launch that version.
+  - **📦 Raw Blizzard CDN Mirror (~48 GB Total):** Mirrors all 6 unpatched Base MPQ archives (`8370.direct`, `20813.direct`, etc.), all 85 historical patch MPQs (`Updates/d3-0-*.MPQ`), and CASC index manifests. Complete 100% offline self-hosted cold preservation.
+  - **Integrity & Metadata:** Automatically generates `SHA256SUMS.txt` and `VERSION_INFO.txt` per build. Resumable at any time.
 - **Segmented Drawer Tabs:** Both the **Reaper of Souls** and **Vanilla Classic** expansion drawers feature category tab selectors:
   - `⭐ Retail`: Official production retail patches and milestone base clients.
   - `🧪 Public Test Realm`: Historical PTR iterations, preview patches, and test candidates.
   - `🔒 Closed Beta`: Milestone Friends & Family, Closed Beta, and Open Beta builds (including Vanilla `7162`–`9359` and RoS `18962`–`21962`).
-- **Real-Time Per-File CDN Availability Tracking:** Every single version chip displays an animated breathing status dot that probes Blizzard's CDN in real-time:
-  - 🟢 **OK:** Verified live and downloadable directly from Blizzard's Akamai/EdgeSuite edge nodes.
-  - 🟡 **CHECKING:** Background HTTP HEAD probe currently verifying file presence.
-  - 🔴 **OFFLINE:** Flagged if an archive or endpoint is unavailable.
-- **Dual-Pipeline Architecture (Modern NGDP/CASC + Historical MPQ/PTCH):**
-  - **Reaper of Souls CASC (`2.7.3` through `2.8.1`):** Queries Blizzard's NGDP/TACT endpoints, downloads `BuildConfig`, `CDNConfig`, `encoding`, `root`, and `install` manifests, decodes BLTE (`N`, `Z`, `E`) streams, and builds a complete local CASC `Data/` container (`data.000`+, `.idx` index files, `shmem`, and `.build.info`).
-  - **Reaper of Souls 2014 MPQ (`2.0.0.20813` – `2.1.2.28709`):** Full reverse-engineered support for Blizzard's 2014 MPQ patch architecture (`20813.direct`). Parses `Updates/d3-0-{Build}-Win-final.MPQ` archives featuring `MPQ_FILE_PATCH_FILE` (`0x00100000`) flags, strips the 28-byte `TPatchInfo` header, decompresses LZMA streams (`0x12`), and applies Blizzard's `PTCH` diff streams with bit-for-bit MD5 verification.
-  - **Vanilla Classic (`1.0.0.8370` – `1.0.8a.16603` & Beta):** Streams from `8370.direct` and `7162.direct`, extracts base binaries from `base-Win.mpq` (Zlib `0x02` and LZMA `0x12`), processes `delete.lst` and `patch.lst`, and executes cumulative `PTCH` (`BSD0`/`BSDIFF40` and `COPY`) diffs.
+- **Real-Time Per-File CDN Availability Tracking:** Every single version chip displays an animated breathing status dot that probes Blizzard's CDN in real-time (`OK`, `CHECKING`, `OFFLINE`).
 - **Fast "Binaries Only" Mode (~35 MB Fast Patch):** Need only the exact historical `Diablo III.exe` and DLLs for a specific patch without downloading 15 GB of assets? Both Reaper of Souls and Vanilla drawers feature a **Binaries Only (~35 MB Fast Patch)** checkbox to extract, patch, and verify clean binaries in seconds.
-- **GUI + Headless CLI Support:** Run `Diablo3Forever.exe` with no arguments for the interactive GUI, or pass CLI flags for 100% silent, unattended deployment.
+- **GUI + Headless CLI Support:** Run `Diablo3Forever.exe` with no arguments for the interactive GUI, or pass CLI flags for 100% silent, unattended deployment and batch backups.
+
+---
+
+## Headless CLI & Bulk Backup Usage
+
+```powershell
+# Interactive GUI
+.\Diablo3Forever.exe
+
+# List all 91 official Blizzard CDN builds with release dates and provenance
+.\Diablo3Forever.exe --list-versions
+
+# Install a specific historical build directly from Blizzard CDN
+.\Diablo3Forever.exe --build 16603 "C:\Games\Diablo III 1.0.8a"
+.\Diablo3Forever.exe --version "2.1.2" "C:\Games\Diablo III 2.1.2" --binaries-only
+
+# Bulk Backup all 91 builds to external storage or NAS (Fast Binaries Mode ~3.2 GB)
+.\Diablo3Forever.exe --backup-all "E:\Diablo3_Historical_Archive" --backup-mode binaries --backup-scope all
+
+# Complete Raw Blizzard CDN Offline Mirror (~48 GB)
+.\Diablo3Forever.exe --backup-all "E:\Diablo3_Cold_Storage" --backup-mode raw --backup-scope all
+```
 
 ---
 

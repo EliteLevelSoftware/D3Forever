@@ -125,6 +125,50 @@ namespace D3Downloader
                 {
                     maxConcurrency = Math.Clamp(th, 1, 64);
                 }
+                else if (arg.Equals("--backup-all", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    string backupDest = args[++i];
+                    BackupMode mode = BackupMode.FastBinaries;
+                    BackupScope scope = BackupScope.All;
+
+                    for (int j = i + 1; j < args.Length; j++)
+                    {
+                        if (args[j].Equals("--backup-mode", StringComparison.OrdinalIgnoreCase) && j + 1 < args.Length)
+                        {
+                            string mStr = args[++j];
+                            if (mStr.Equals("raw", StringComparison.OrdinalIgnoreCase) || mStr.Equals("cdn", StringComparison.OrdinalIgnoreCase))
+                                mode = BackupMode.RawCdnMirror;
+                        }
+                        else if (args[j].Equals("--backup-scope", StringComparison.OrdinalIgnoreCase) && j + 1 < args.Length)
+                        {
+                            string sStr = args[++j];
+                            if (sStr.Equals("retail", StringComparison.OrdinalIgnoreCase)) scope = BackupScope.RetailOnly;
+                            else if (sStr.Equals("ros", StringComparison.OrdinalIgnoreCase)) scope = BackupScope.ReaperOfSoulsOnly;
+                            else if (sStr.Equals("vanilla", StringComparison.OrdinalIgnoreCase)) scope = BackupScope.VanillaOnly;
+                        }
+                    }
+
+                    AttachConsole(-1);
+                    try
+                    {
+                        var stdOut = new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true };
+                        Console.SetOut(stdOut);
+                        var stdErr = new StreamWriter(Console.OpenStandardError()) { AutoFlush = true };
+                        Console.SetError(stdErr);
+                    }
+                    catch { }
+
+                    var ok = BackupEngine.RunBackupAsync(
+                        backupRoot: backupDest,
+                        mode: mode,
+                        scope: scope,
+                        onOverallProgress: (curr, tot, msg) => Console.WriteLine($"[OVERALL {curr}/{tot}] {msg}"),
+                        onItemProgress: (pct, msg) => { },
+                        log: Console.WriteLine,
+                        ct: CancellationToken.None).GetAwaiter().GetResult();
+
+                    return ok ? 0 : 1;
+                }
                 else if (!arg.StartsWith("-"))
                 {
                     targetDir = Path.GetFullPath(arg);
