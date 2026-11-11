@@ -33,7 +33,14 @@
 
 ## Key Features
 
-- **100% Direct from Official Blizzard CDNs:** Every byte is fetched directly from Blizzard's official distribution servers (`us.patch.battle.net`, `us.cdn.blizzard.com`, and `dist.blizzard.com.edgesuite.net`). Zero third-party mirrors, re-uploads, or modified game binaries are used.
+- **100% Direct from Official Blizzard CDNs:** Every byte of the 83 legacy MPQ builds and live CASC clients is fetched directly from Blizzard's official distribution servers (`us.patch.battle.net`, `us.cdn.blizzard.com`, and `dist.blizzard.com.edgesuite.net`). Zero third-party mirrors, re-uploads, or modified game binaries are used.
+
+> [!NOTE]
+> ### 🔍 Blizzard CDN Reality: Legacy MPQ vs. Live CASC vs. Historical CASC
+> - **🟢 83 Legacy MPQ Builds (100% Live CDN Download):** Every single Vanilla milestone (Friends & Family Beta `7162` through Patch `1.0.8a`) and Reaper of Souls MPQ build (`2.0.0` through `2.1.2`) remains **100% intact and actively hosted** across Blizzard's Akamai/EdgeSuite CDN servers. Full clients and binaries download directly in seconds with zero external dependencies.
+> - **🟢 Live Retail CASC (100% Live CDN Download):** Current retail builds (`2.8.0.99920` and China `2.8.1.101167`) are live and streamable directly from Blizzard's NGDP infrastructure.
+> - **🟡 Historical CASC Builds (2.7.3 – 2.7.8 / Amber `ARCHIVE` Badge):** Blizzard retains all official manifest configurations (`BuildConfig`, `CDNConfig`, `install`, `encoding`) indefinitely. However, Blizzard has purged the unique raw payload chunks for these retired patches from their live CDN (`tpr/diablo3/data/` returns HTTP 404). In the UI, these builds are badged with an amber **`ARCHIVE`** pill. They can be installed by pointing Diablo 3 Forever to a local backup/archive folder, or assembled using the built-in Offline Client Assembler.
+
 - **Bulk Archival & Cold Storage Backup Engine:** Backup and preserve the entire 91-build catalog to an external hard drive, USB storage, or network share (NAS):
   - **Live Destination Inventory Tracker:** Automatically inspects the destination drive in real time, displaying present vs. needed builds and guaranteeing 100% incremental resume (already verified files are never re-downloaded).
   - **Dual-Mode Archival:** Download Fast Binaries AND the Raw Blizzard CDN Mirror at the same time via dual checkboxes.
@@ -80,41 +87,41 @@
 
 #### Retail Releases (19 Builds)
 
-| Version | Build | Architecture | Release Date | Summary / Highlights |
-| :--- | :--- | :--- | :--- | :--- |
-| **`2.8.0`** | `99920` | CASC 64-bit | Live Retail | Global Live Retail Client (64-bit CASC) |
-| **`2.8.1`** | `101167` | CASC 64-bit | CN CDN | Patch 2.8.1 Production Client (64-bit CASC) |
-| **`2.7.8`** | `97927` | CASC 64-bit | 2024-09-10 | Patch 2.7.8 Post-Loc Production Build |
-| **`2.7.7`** | `93903` | CASC 64-bit | 2024-02-06 | Patch 2.7.7a Production Release Candidate 2 |
-| **`2.7.7`** | `92326` | CASC 64-bit | 2024-01-09 | Patch 2.7.7 Production Release Candidate 1 |
-| **`2.7.6`** | `91007` | CASC 64-bit | 2023-09-12 | Patch 2.7.6 Solo Self-Found Update (64-bit CASC) |
-| **`2.7.4`** | `84161` | CASC 64-bit | 2022-08-23 | Patch 2.7.4 Angelic Crucibles Update (64-bit CASC) |
-| **`2.7.3`** | `82785` | CASC 64-bit | 2022-04-12 | Patch 2.7.3 Echoing Nightmare Client (64-bit CASC) |
-| **`2.1.2`** | `28709` | MPQ 32-bit | 2015-01-13 | Patch 2.1.2 (Ancient Items, Conduit Pylon Rework) |
-| **`2.1.1`** | `27255` | MPQ 32-bit | 2014-09-23 | Patch 2.1.1 (Kadala Bloodshard Costs, Pet Toughness) |
-| **`2.1.0`** | `26451` | MPQ 32-bit | 2014-08-26 | Major Update (Greater Rifts, Legendary Gems, The Vault) |
-| **`2.0.6`** | `24641` | MPQ 32-bit | 2014-06-10 | Patch 2.0.6 (Crafting Material Removal, Class Balancing) |
-| **`2.0.5a`** | `24017` | MPQ 32-bit | 2014-05-15 | Patch 2.0.5a Stability & Bugfix Hotfix |
-| **`2.0.5`** | `23920` | MPQ 32-bit | 2014-05-13 | Patch 2.0.5 (Horadric Cache Torment Drop Rates, Gold Trade) |
-| **`2.0.4`** | `23119` | MPQ 32-bit | 2014-04-08 | Patch 2.0.4 (Crusader Wrath Fixes, Class Tweaks) |
-| **`2.0.3`** | `22427` | MPQ 32-bit | 2014-03-11 | Patch 2.0.3 Bugfix & Stability Update |
-| **`2.0.2`** | `22274` | MPQ 32-bit | 2014-03-04 | Patch 2.0.2 Pre-Expansion Optimization Patch |
-| **`2.0.1`** | `22044` | MPQ 32-bit | 2014-02-25 | Reaper of Souls Pre-Patch (Loot 2.0, Paragon 2.0) |
-| **`2.0.0`** | `20813` | MPQ 32-bit | 2014-01-20 | Reaper of Souls Unpatched Retail Base MPQ Build |
+| Version | Build | Architecture | Availability | Release Date | Summary / Highlights |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`2.8.0`** | `99920` | CASC 64-bit | 🟢 Live CDN | Live Retail | Global Live Retail Client (64-bit CASC) |
+| **`2.8.1`** | `101167` | CASC 64-bit | 🟢 Live CDN | CN CDN | Patch 2.8.1 Production Client (64-bit CASC) |
+| **`2.7.8`** | `97927` | CASC 64-bit | 🟡 Offline Archive | 2024-09-10 | Patch 2.7.8 Post-Loc Production Build |
+| **`2.7.7`** | `93903` | CASC 64-bit | 🟡 Offline Archive | 2024-02-06 | Patch 2.7.7a Production Release Candidate 2 |
+| **`2.7.7`** | `92326` | CASC 64-bit | 🟡 Offline Archive | 2024-01-09 | Patch 2.7.7 Production Release Candidate 1 |
+| **`2.7.6`** | `91007` | CASC 64-bit | 🟡 Offline Archive | 2023-09-12 | Patch 2.7.6 Solo Self-Found Update (64-bit CASC) |
+| **`2.7.4`** | `84161` | CASC 64-bit | 🟡 Offline Archive | 2022-08-23 | Patch 2.7.4 Angelic Crucibles Update (64-bit CASC) |
+| **`2.7.3`** | `82785` | CASC 64-bit | 🟡 Offline Archive | 2022-04-12 | Patch 2.7.3 Echoing Nightmare Client (64-bit CASC) |
+| **`2.1.2`** | `28709` | MPQ 32-bit | 🟢 Live CDN | 2015-01-13 | Patch 2.1.2 (Ancient Items, Conduit Pylon Rework) |
+| **`2.1.1`** | `27255` | MPQ 32-bit | 🟢 Live CDN | 2014-09-23 | Patch 2.1.1 (Kadala Bloodshard Costs, Pet Toughness) |
+| **`2.1.0`** | `26451` | MPQ 32-bit | 🟢 Live CDN | 2014-08-26 | Major Update (Greater Rifts, Legendary Gems, The Vault) |
+| **`2.0.6`** | `24641` | MPQ 32-bit | 🟢 Live CDN | 2014-06-10 | Patch 2.0.6 (Crafting Material Removal, Class Balancing) |
+| **`2.0.5a`** | `24017` | MPQ 32-bit | 🟢 Live CDN | 2014-05-15 | Patch 2.0.5a Stability & Bugfix Hotfix |
+| **`2.0.5`** | `23920` | MPQ 32-bit | 🟢 Live CDN | 2014-05-13 | Patch 2.0.5 (Horadric Cache Torment Drop Rates, Gold Trade) |
+| **`2.0.4`** | `23119` | MPQ 32-bit | 🟢 Live CDN | 2014-04-08 | Patch 2.0.4 (Crusader Wrath Fixes, Class Tweaks) |
+| **`2.0.3`** | `22427` | MPQ 32-bit | 🟢 Live CDN | 2014-03-11 | Patch 2.0.3 Bugfix & Stability Update |
+| **`2.0.2`** | `22274` | MPQ 32-bit | 🟢 Live CDN | 2014-03-04 | Patch 2.0.2 Pre-Expansion Optimization Patch |
+| **`2.0.1`** | `22044` | MPQ 32-bit | 🟢 Live CDN | 2014-02-25 | Reaper of Souls Pre-Patch (Loot 2.0, Paragon 2.0) |
+| **`2.0.0`** | `20813` | MPQ 32-bit | 🟢 Live CDN | 2014-01-20 | Reaper of Souls Unpatched Retail Base MPQ Build |
 
 #### Public Test Realm (PTR) (9 Builds)
 
-| Version | Build | Architecture | Release Date | Summary / Highlights |
-| :--- | :--- | :--- | :--- | :--- |
-| **`2.7.8`** | `96670` | CASC 64-bit | 2024-08-20 | Patch 2.7.8 Public Test Realm Client (64-bit CASC) |
-| **`2.1.2`** | `28709` | MPQ 32-bit | 2015-01-08 | Patch 2.1.2 PTR Release Candidate Build |
-| **`2.1.2`** | `28341` | MPQ 32-bit | 2014-11-20 | Patch 2.1.2 PTR Wave 1 (Ancient Items Debut) |
-| **`2.1.0`** | `26370` | MPQ 32-bit | 2014-08-06 | Patch 2.1.0 PTR Release Candidate Build |
-| **`2.1.0`** | `26281` | MPQ 32-bit | 2014-07-30 | Patch 2.1.0 PTR Iteration 4 (Greater Rift Pacing) |
-| **`2.1.0`** | `26067` | MPQ 32-bit | 2014-07-23 | Patch 2.1.0 PTR Iteration 3 (Seasons Testing) |
-| **`2.1.0`** | `25658` | MPQ 32-bit | 2014-07-16 | Patch 2.1.0 PTR Iteration 2 (Legendary Gems Balance) |
-| **`2.1.0`** | `25390` | MPQ 32-bit | 2014-07-09 | Patch 2.1.0 PTR Iteration 1 (Cesspools & Greater Rifts) |
-| **`2.1.0`** | `25014` | MPQ 32-bit | 2014-06-25 | Patch 2.1.0 Initial PTR Launch Build |
+| Version | Build | Architecture | Availability | Release Date | Summary / Highlights |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`2.7.8`** | `96670` | CASC 64-bit | 🟡 Offline Archive | 2024-08-20 | Patch 2.7.8 Public Test Realm Client (64-bit CASC) |
+| **`2.1.2`** | `28709` | MPQ 32-bit | 🟢 Live CDN | 2015-01-08 | Patch 2.1.2 PTR Release Candidate Build |
+| **`2.1.2`** | `28341` | MPQ 32-bit | 🟢 Live CDN | 2014-11-20 | Patch 2.1.2 PTR Wave 1 (Ancient Items Debut) |
+| **`2.1.0`** | `26370` | MPQ 32-bit | 🟢 Live CDN | 2014-08-06 | Patch 2.1.0 PTR Release Candidate Build |
+| **`2.1.0`** | `26281` | MPQ 32-bit | 🟢 Live CDN | 2014-07-30 | Patch 2.1.0 PTR Iteration 4 (Greater Rift Pacing) |
+| **`2.1.0`** | `26067` | MPQ 32-bit | 🟢 Live CDN | 2014-07-23 | Patch 2.1.0 PTR Iteration 3 (Seasons Testing) |
+| **`2.1.0`** | `25658` | MPQ 32-bit | 🟢 Live CDN | 2014-07-16 | Patch 2.1.0 PTR Iteration 2 (Legendary Gems Balance) |
+| **`2.1.0`** | `25390` | MPQ 32-bit | 🟢 Live CDN | 2014-07-09 | Patch 2.1.0 PTR Iteration 1 (Cesspools & Greater Rifts) |
+| **`2.1.0`** | `25014` | MPQ 32-bit | 🟢 Live CDN | 2014-06-25 | Patch 2.1.0 Initial PTR Launch Build |
 
 #### Closed Beta (12 Builds)
 
