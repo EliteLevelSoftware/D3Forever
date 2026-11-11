@@ -1,4 +1,23 @@
-﻿# Diablo 3 Forever
+﻿<div align="center">
+
+<img src="https://raw.githubusercontent.com/EliteLevelSoftware/D3Forever/main/docs/d3forever_logo.png" width="96"/>
+
+# Diablo 3 Forever
+### Historical Archive Downloader, Multi-Version Installer & Offline Game Builder
+**by Elite Level Software**
+
+[![Platform](https://img.shields.io/badge/Platform-Windows-blue?style=flat-square&logo=windows)](https://github.com/EliteLevelSoftware/D3Forever/releases)
+[![.NET](https://img.shields.io/badge/Built%20With-.NET%2010-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com/)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/EliteLevelSoftware/D3Forever?style=flat-square&color=gold)](https://github.com/EliteLevelSoftware/D3Forever/releases)
+[![Downloads](https://img.shields.io/github/downloads/EliteLevelSoftware/D3Forever/total?style=flat-square&color=gold&label=Downloads)](https://github.com/EliteLevelSoftware/D3Forever/releases)
+[![Downloads (latest)](https://img.shields.io/github/downloads/EliteLevelSoftware/D3Forever/latest/total?style=flat-square&color=gold&label=Latest%20Release)](https://github.com/EliteLevelSoftware/D3Forever/releases/latest)
+
+**[⬇️ Download the latest version](https://github.com/EliteLevelSoftware/D3Forever/releases/latest)**
+
+</div>
+
+---
 
 **Diablo 3 Forever** (v1.4.0) is a standalone, zero-dependency open-source archival downloader and multi-version installer that streams, reconstructs, and archives **91 official Diablo III builds** (spanning retail releases, Public Test Realm PTR iterations, and closed/open beta milestone clients from 2011 to 2025) **100% directly from Blizzard's official CDN servers**.
 
