@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -13,30 +13,41 @@ using System.Threading.Tasks;
 
 namespace D3Downloader
 {
+    public enum D3BuildCategory
+    {
+        Retail,
+        Ptr,
+        Beta
+    }
+
     public sealed class D3BuildCatalogItem
     {
         public string Version { get; init; }
         public int BuildNumber { get; init; }
         public bool IsCasc { get; init; }
         public bool IsRoS { get; init; }
+        public D3BuildCategory Category { get; init; } = D3BuildCategory.Retail;
         public string ProductCode { get; init; } = "d3";
         public string ReleaseDate { get; init; }
         public string Summary { get; init; }
         public string BaseDirectUrl { get; init; } = D3BuildCatalog.VanillaDirectBaseUrl;
         public string MfilFileName { get; init; } = D3BuildCatalog.VanillaMfilFileName;
         public int BaseBuildNumber { get; init; } = 8370;
+        public string? CdnConfigUrl { get; init; }
 
-        public string CheckUrl => IsCasc
-            ? $"http://us.patch.battle.net:1119/{ProductCode}/versions"
-            : (BuildNumber > BaseBuildNumber
-                ? $"{BaseDirectUrl}/Updates/d3-0-{BuildNumber}-Win-final.MPQ"
-                : $"{BaseDirectUrl}/Data_D3/PC/MPQs/base-Win.mpq");
+        public string CheckUrl => !string.IsNullOrEmpty(CdnConfigUrl)
+            ? CdnConfigUrl
+            : (IsCasc
+                ? $"http://us.patch.battle.net:1119/{ProductCode}/versions"
+                : (BuildNumber > BaseBuildNumber
+                    ? $"{BaseDirectUrl}/Updates/d3-0-{BuildNumber}-Win-final.MPQ"
+                    : $"{BaseDirectUrl}/Data_D3/PC/MPQs/base-Win.mpq"));
 
         public string DisplayTitle => IsCasc
-            ? $"{Version}.{BuildNumber} — [CASC / {ProductCode} 64-bit] ({Summary})"
+            ? $"{Version}.{BuildNumber} Ã¢â‚¬â€ [CASC / {ProductCode} 64-bit] ({Summary})"
             : (IsRoS
-                ? $"{Version}.{BuildNumber} — [RoS MPQ 32-bit] ({ReleaseDate} - {Summary})"
-                : $"{Version}.{BuildNumber} — [Vanilla MPQ 32-bit] ({ReleaseDate} - {Summary})");
+                ? $"{Version}.{BuildNumber} Ã¢â‚¬â€ [{Category} RoS MPQ 32-bit] ({ReleaseDate} - {Summary})"
+                : $"{Version}.{BuildNumber} Ã¢â‚¬â€ [{Category} Vanilla MPQ 32-bit] ({ReleaseDate} - {Summary})");
 
         public override string ToString() => DisplayTitle;
     }
@@ -45,80 +56,147 @@ namespace D3Downloader
     {
         public const string VanillaDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod-retail/NA/8370.direct";
         public const string VanillaMfilFileName = "d3-16603-5A26B6C69DFDB16C25E1D05B0EEE83C2.mfil";
+        public const string VanillaPtrDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod/public-test/Global/10485.direct";
+        public const string VanillaBetaDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod/20FB5BE9/NA/7162.direct";
+
         public const string RosDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod-retail/NA/20813.direct";
         public const string RosMfilFileName = "d3-28709-85F13E62259AEC63DC654C8F847A7CAF.mfil";
+        public const string RosPtrDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod/public-test/NA/23119.direct";
         public const string RosBetaDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod/beta/00FC2DE9/NA/18962.direct";
-        public const string VanillaBetaDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod/20FB5BE9/NA/7162.direct";
 
         public static readonly IReadOnlyList<D3BuildCatalogItem> AllBuilds = new List<D3BuildCatalogItem>
         {
             // =========================================================================
-            // REAPER OF SOULS TILE (15 BUILDS)
+            // REAPER OF SOULS Ã¢â‚¬â€ RETAIL CATEGORY
             // =========================================================================
-            new() { Version = "2.8.0",  BuildNumber = 99920,  IsCasc = true,  IsRoS = true,  ProductCode = "d3",   ReleaseDate = "Live Retail", Summary = "Global Live Retail Reaper of Souls Client (64-bit)" },
-            new() { Version = "2.7.8",  BuildNumber = 96670,  IsCasc = true,  IsRoS = true,  ProductCode = "d3t",  ReleaseDate = "PTR CDN",     Summary = "Patch 2.7.8 Public Test Realm Client (64-bit)" },
-            new() { Version = "2.8.1",  BuildNumber = 101167, IsCasc = true,  IsRoS = true,  ProductCode = "d3cn", ReleaseDate = "CN CDN",      Summary = "Patch 2.8.1 Reaper of Souls Client (64-bit)" },
-            new() { Version = "2.1.2",  BuildNumber = 28709,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = RosMfilFileName, ReleaseDate = "2015-01-13", Summary = "Patch 2.1.2 (Ancient Items, Conduit Pylon Rework)" },
-            new() { Version = "2.1.1",  BuildNumber = 27255,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-27255-35F65D5686569C9A188AC0264ED26583.mfil", ReleaseDate = "2014-09-23", Summary = "Patch 2.1.1 (Kadala Bloodshard Costs, Pet Toughness)" },
-            new() { Version = "2.1.0",  BuildNumber = 26451,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-26451-6032812D57D4CE684194552583B4275F.mfil", ReleaseDate = "2014-08-26", Summary = "Major Update (Greater Rifts, Legendary Gems, The Vault)" },
-            new() { Version = "2.0.6",  BuildNumber = 24641,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-24641-4D78C4B7698F7F79B3F5FD02049BF58C.mfil", ReleaseDate = "2014-06-10", Summary = "Patch 2.0.6 (Crafting Material Removal, Class Balancing)" },
-            new() { Version = "2.0.5a", BuildNumber = 24017,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-24017-19A8EF9C0CDE1BABCA831DA6EF2481B7.mfil", ReleaseDate = "2014-05-15", Summary = "Patch 2.0.5a Stability & Bugfix Hotfix" },
-            new() { Version = "2.0.5",  BuildNumber = 23920,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-23920-E2B432A14395F977F64B476003FF5BB8.mfil", ReleaseDate = "2014-05-13", Summary = "Patch 2.0.5 (Horadric Cache Torment Drop Rates, Gold Trade)" },
-            new() { Version = "2.0.4",  BuildNumber = 23119,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-23119-137D06EF773BC6F7BB015C088AAC8568.mfil", ReleaseDate = "2014-04-08", Summary = "Patch 2.0.4 (Crusader Wrath Fixes, Class Tweaks)" },
-            new() { Version = "2.0.3",  BuildNumber = 22427,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-22427-426C3AE6756462BF912686D1FE56CD22.mfil", ReleaseDate = "2014-03-11", Summary = "Patch 2.0.3 Bugfix & Stability Update" },
-            new() { Version = "2.0.2",  BuildNumber = 22274,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-22274-B7A49A3F2CDE04523DC09380EF88DF52.mfil", ReleaseDate = "2014-03-04", Summary = "Patch 2.0.2 Pre-Expansion Optimization Patch" },
-            new() { Version = "2.0.1",  BuildNumber = 22044,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-22044-0DD436E701850277986966F412FDC4B7.mfil", ReleaseDate = "2014-02-25", Summary = "Reaper of Souls Pre-Patch (Loot 2.0, Paragon 2.0)" },
-            new() { Version = "2.0.0",  BuildNumber = 20813,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-22044-0DD436E701850277986966F412FDC4B7.mfil", ReleaseDate = "2014-01-20", Summary = "Reaper of Souls Unpatched Retail Base MPQ Build" },
-            new() { Version = "Beta",   BuildNumber = 18962,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 18962, BaseDirectUrl = RosBetaDirectBaseUrl, MfilFileName = "", ReleaseDate = "2013-11-20", Summary = "Original RoS Friends & Family Closed Beta Base Client" },
-
+            new() { Version = "2.8.0", BuildNumber = 99920, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "Live Retail", Summary = "Global Live Retail Client (64-bit CASC)" },
+            new() { Version = "2.8.1", BuildNumber = 101167, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3cn", ReleaseDate = "CN CDN", Summary = "Patch 2.8.1 Production Client (64-bit CASC)" },
+            new() { Version = "2.7.8", BuildNumber = 97927, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-09-10", Summary = "Patch 2.7.8 Post-Loc Production Build", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/3c/08/3c08a11365511a36115399741311d6a1" },
+            new() { Version = "2.7.7", BuildNumber = 93903, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-02-06", Summary = "Patch 2.7.7a Production Release Candidate 2", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/0e/49/0e49135ccc3ae6496e78c92e280da93f" },
+            new() { Version = "2.7.7", BuildNumber = 92326, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-01-09", Summary = "Patch 2.7.7 Production Release Candidate 1", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/ef/5d/ef5defe7bbf218a323336273c86be31c" },
+            new() { Version = "2.7.6", BuildNumber = 91007, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2023-09-12", Summary = "Patch 2.7.6 Solo Self-Found Update (64-bit CASC)", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/80/70/8070cfaf79f4ce7338a895fff28b135d" },
+            new() { Version = "2.7.4", BuildNumber = 84161, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2022-08-23", Summary = "Patch 2.7.4 Angelic Crucibles Update (64-bit CASC)", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/51/94/5194054cfa6480884c9a451b6f1107a3" },
+            new() { Version = "2.7.3", BuildNumber = 82785, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3cn", ReleaseDate = "2022-04-12", Summary = "Patch 2.7.3 Echoing Nightmare Client (64-bit CASC)", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/ce/be/cebe6c6f58867665a442156284766fd2" },
+            new() { Version = "2.1.2", BuildNumber = 28709, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = RosMfilFileName, ReleaseDate = "2015-01-13", Summary = "Patch 2.1.2 (Ancient Items, Conduit Pylon Rework)" },
+            new() { Version = "2.1.1", BuildNumber = 27255, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-27255-35F65D5686569C9A188AC0264ED26583.mfil", ReleaseDate = "2014-09-23", Summary = "Patch 2.1.1 (Kadala Bloodshard Costs, Pet Toughness)" },
+            new() { Version = "2.1.0", BuildNumber = 26451, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-26451-6032812D57D4CE684194552583B4275F.mfil", ReleaseDate = "2014-08-26", Summary = "Major Update (Greater Rifts, Legendary Gems, The Vault)" },
+            new() { Version = "2.0.6", BuildNumber = 24641, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-24641-4D78C4B7698F7F79B3F5FD02049BF58C.mfil", ReleaseDate = "2014-06-10", Summary = "Patch 2.0.6 (Crafting Material Removal, Class Balancing)" },
+            new() { Version = "2.0.5a", BuildNumber = 24017, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-24017-19A8EF9C0CDE1BABCA831DA6EF2481B7.mfil", ReleaseDate = "2014-05-15", Summary = "Patch 2.0.5a Stability & Bugfix Hotfix" },
+            new() { Version = "2.0.5", BuildNumber = 23920, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-23920-E2B432A14395F977F64B476003FF5BB8.mfil", ReleaseDate = "2014-05-13", Summary = "Patch 2.0.5 (Horadric Cache Torment Drop Rates, Gold Trade)" },
+            new() { Version = "2.0.4", BuildNumber = 23119, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-23119-137D06EF773BC6F7BB015C088AAC8568.mfil", ReleaseDate = "2014-04-08", Summary = "Patch 2.0.4 (Crusader Wrath Fixes, Class Tweaks)" },
+            new() { Version = "2.0.3", BuildNumber = 22427, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-22427-426C3AE6756462BF912686D1FE56CD22.mfil", ReleaseDate = "2014-03-11", Summary = "Patch 2.0.3 Bugfix & Stability Update" },
+            new() { Version = "2.0.2", BuildNumber = 22274, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-22274-B7A49A3F2CDE04523DC09380EF88DF52.mfil", ReleaseDate = "2014-03-04", Summary = "Patch 2.0.2 Pre-Expansion Optimization Patch" },
+            new() { Version = "2.0.1", BuildNumber = 22044, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-22044-0DD436E701850277986966F412FDC4B7.mfil", ReleaseDate = "2014-02-25", Summary = "Reaper of Souls Pre-Patch (Loot 2.0, Paragon 2.0)" },
+            new() { Version = "2.0.0", BuildNumber = 20813, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-22044-0DD436E701850277986966F412FDC4B7.mfil", ReleaseDate = "2014-01-20", Summary = "Reaper of Souls Unpatched Retail Base MPQ Build" },
             // =========================================================================
-            // VANILLA CLASSIC TILE (19 BUILDS)
+            // REAPER OF SOULS Ã¢â‚¬â€ PUBLIC TEST REALM (PTR)
             // =========================================================================
-            new() { Version = "1.0.8a", BuildNumber = 16603,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2013-05-10", Summary = "Final Vanilla 1.0.8 Hotfix Build" },
-            new() { Version = "1.0.8",  BuildNumber = 16416,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2013-05-07", Summary = "Monster Density & Co-op XP Bonus Patch" },
-            new() { Version = "1.0.7a", BuildNumber = 15295,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2013-02-15", Summary = "Duelling & Demon Hunter Hotfix" },
-            new() { Version = "1.0.7",  BuildNumber = 14633,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2013-02-12", Summary = "Brawling, Marquise Gems & BoA Crafting" },
-            new() { Version = "1.0.6a", BuildNumber = 13644,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-12-06", Summary = "Quest & Stability Patch" },
-            new() { Version = "1.0.6",  BuildNumber = 13300,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-11-27", Summary = "Network & Bugfix Patch" },
-            new() { Version = "1.0.5a", BuildNumber = 12811,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-10-25", Summary = "Crash & Achievement Fix Patch" },
-            new() { Version = "1.0.5",  BuildNumber = 12480,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-10-16", Summary = "Monster Power (MP1-10) & Infernal Machine" },
-            new() { Version = "1.0.4",  BuildNumber = 11327,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-08-21", Summary = "Paragon 1.0 (Levels 1-100) & Legendary Overhaul" },
-            new() { Version = "1.0.3b", BuildNumber = 10485,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-07-10", Summary = "Auction House & Stability Patch" },
-            new() { Version = "1.0.3a", BuildNumber = 10235,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-06-26", Summary = "Zombie Bears & General Bugfix Patch" },
-            new() { Version = "1.0.3",  BuildNumber = 10057,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-06-19", Summary = "Inferno Tuning, IAS Nerf & Repair Cost Patch" },
-            new() { Version = "1.0.2c", BuildNumber = 9991,   IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-06-12", Summary = "Mac/PC Client Stability Patch" },
-            new() { Version = "1.0.2b", BuildNumber = 9950,   IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-06-07", Summary = "Login & Auction House Responsiveness Patch" },
-            new() { Version = "1.0.2a", BuildNumber = 9858,   IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-06-01", Summary = "Item & Skill Tooltip Fix Patch" },
-            new() { Version = "1.0.2",  BuildNumber = 9749,   IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-05-29", Summary = "First Post-Launch Client Patch" },
-            new() { Version = "1.0.1",  BuildNumber = 9558,   IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-05-15", Summary = "Original May 15, 2012 Launch Day Patch" },
-            new() { Version = "1.0.0",  BuildNumber = 8370,   IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-05-14", Summary = "Original Unpatched DVD/Retail Base MPQ Build" },
-            new() { Version = "Beta",   BuildNumber = 7162,   IsCasc = false, IsRoS = false, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "", ReleaseDate = "2011-09-20", Summary = "Original Vanilla Friends & Family Beta Client" }
+            new() { Version = "2.7.8", BuildNumber = 96670, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Ptr, ProductCode = "d3t", ReleaseDate = "2024-08-20", Summary = "Patch 2.7.8 Public Test Realm Client (64-bit CASC)" },
+            new() { Version = "2.1.2", BuildNumber = 28709, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Ptr, BaseBuildNumber = 23119, BaseDirectUrl = RosPtrDirectBaseUrl, MfilFileName = "d3t-28709-D329E14E226965F76BDFDBC8BA9AD34C.mfil", ReleaseDate = "2015-01-08", Summary = "Patch 2.1.2 PTR Release Candidate Build" },
+            new() { Version = "2.1.2", BuildNumber = 28341, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Ptr, BaseBuildNumber = 23119, BaseDirectUrl = RosPtrDirectBaseUrl, MfilFileName = "d3t-28341-16554336E3E1757B9C0BB33438C527AB.mfil", ReleaseDate = "2014-11-20", Summary = "Patch 2.1.2 PTR Wave 1 (Ancient Items Debut)" },
+            new() { Version = "2.1.0", BuildNumber = 26370, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Ptr, BaseBuildNumber = 23119, BaseDirectUrl = RosPtrDirectBaseUrl, MfilFileName = "d3t-26370-C33663E1AE5D42CDDAFA24FFE2118D94.mfil", ReleaseDate = "2014-08-06", Summary = "Patch 2.1.0 PTR Release Candidate Build" },
+            new() { Version = "2.1.0", BuildNumber = 26281, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Ptr, BaseBuildNumber = 23119, BaseDirectUrl = RosPtrDirectBaseUrl, MfilFileName = "d3t-26281-4159E96D386B9C178AD4A7269ECA8E1F.mfil", ReleaseDate = "2014-07-30", Summary = "Patch 2.1.0 PTR Iteration 4 (Greater Rift Pacing)" },
+            new() { Version = "2.1.0", BuildNumber = 26067, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Ptr, BaseBuildNumber = 23119, BaseDirectUrl = RosPtrDirectBaseUrl, MfilFileName = "d3t-26067-EDD6F989981913DD9931F18B995DCA3F.mfil", ReleaseDate = "2014-07-23", Summary = "Patch 2.1.0 PTR Iteration 3 (Seasons Testing)" },
+            new() { Version = "2.1.0", BuildNumber = 25658, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Ptr, BaseBuildNumber = 23119, BaseDirectUrl = RosPtrDirectBaseUrl, MfilFileName = "d3t-25658-3DD1C595C4523AB7CA30D9AB5B2E75C3.mfil", ReleaseDate = "2014-07-16", Summary = "Patch 2.1.0 PTR Iteration 2 (Legendary Gems Balance)" },
+            new() { Version = "2.1.0", BuildNumber = 25390, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Ptr, BaseBuildNumber = 23119, BaseDirectUrl = RosPtrDirectBaseUrl, MfilFileName = "d3t-25390-7C7BFEC13676ACCB536F2C27A7E9C707.mfil", ReleaseDate = "2014-07-09", Summary = "Patch 2.1.0 PTR Iteration 1 (Cesspools & Greater Rifts)" },
+            new() { Version = "2.1.0", BuildNumber = 25014, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Ptr, BaseBuildNumber = 23119, BaseDirectUrl = RosPtrDirectBaseUrl, MfilFileName = "d3t-25014-C93DA8CC000B60D9A69F90BD9635BC44.mfil", ReleaseDate = "2014-06-25", Summary = "Patch 2.1.0 Initial PTR Launch Build" },
+            // =========================================================================
+            // REAPER OF SOULS Ã¢â‚¬â€ CLOSED BETA CATEGORY
+            // =========================================================================
+            new() { Version = "Beta", BuildNumber = 21962, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Beta, BaseBuildNumber = 18962, BaseDirectUrl = RosBetaDirectBaseUrl, MfilFileName = "d3b-21962-733C32C3D5BB5B89EE6DAFB8A7418D17.mfil", ReleaseDate = "2014-02-20", Summary = "RoS Closed Beta Final Patch Before 2.0 Pre-Patch" },
+            new() { Version = "Beta", BuildNumber = 21806, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Beta, BaseBuildNumber = 18962, BaseDirectUrl = RosBetaDirectBaseUrl, MfilFileName = "d3b-21806-4D9B877EA233CAE52D475B1B177F75C8.mfil", ReleaseDate = "2014-02-13", Summary = "RoS Closed Beta Iteration 9 (Crusader Final Polish)" },
+            new() { Version = "Beta", BuildNumber = 21390, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Beta, BaseBuildNumber = 18962, BaseDirectUrl = RosBetaDirectBaseUrl, MfilFileName = "d3b-21390-BE3F50A1361453D3087C67445B34444E.mfil", ReleaseDate = "2014-02-06", Summary = "RoS Closed Beta Iteration 8 (Torment Scaling)" },
+            new() { Version = "Beta", BuildNumber = 20874, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Beta, BaseBuildNumber = 18962, BaseDirectUrl = RosBetaDirectBaseUrl, MfilFileName = "d3b-20874-83B9CD4AD5271C047881602C465BA236.mfil", ReleaseDate = "2013-12-13", Summary = "RoS Closed Beta Patch 2.0.1 In-Game Notes Update" },
+            new() { Version = "Beta", BuildNumber = 20493, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Beta, BaseBuildNumber = 18962, BaseDirectUrl = RosBetaDirectBaseUrl, MfilFileName = "d3b-20493-74305805A6878CE06D95546626D8F91F.mfil", ReleaseDate = "2014-01-22", Summary = "RoS Closed Beta Iteration 6 (Nephalem Rifts)" },
+            new() { Version = "Beta", BuildNumber = 20134, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Beta, BaseBuildNumber = 18962, BaseDirectUrl = RosBetaDirectBaseUrl, MfilFileName = "d3b-20134-F09D7C0359A83B811BFF9172E7F69356.mfil", ReleaseDate = "2014-01-15", Summary = "RoS Closed Beta Iteration 5 (Blood Shards)" },
+            new() { Version = "Beta", BuildNumber = 19992, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Beta, BaseBuildNumber = 18962, BaseDirectUrl = RosBetaDirectBaseUrl, MfilFileName = "d3b-19992-F7C9F26E91DE3358743D0050B1593013.mfil", ReleaseDate = "2014-01-08", Summary = "RoS Closed Beta Iteration 4 (Adventure Mode)" },
+            new() { Version = "Beta", BuildNumber = 19862, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Beta, BaseBuildNumber = 18962, BaseDirectUrl = RosBetaDirectBaseUrl, MfilFileName = "d3b-19862-A845A173B2E62E656A380D30DDC57628.mfil", ReleaseDate = "2013-12-23", Summary = "RoS Closed Beta Iteration 3 (Kadala Gambling)" },
+            new() { Version = "Beta", BuildNumber = 19796, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Beta, BaseBuildNumber = 18962, BaseDirectUrl = RosBetaDirectBaseUrl, MfilFileName = "d3b-19796-EC2230BA859671689C3A8067526199E4.mfil", ReleaseDate = "2013-12-19", Summary = "RoS Closed Beta Iteration 2 (Bounties System)" },
+            new() { Version = "Beta", BuildNumber = 19561, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Beta, BaseBuildNumber = 18962, BaseDirectUrl = RosBetaDirectBaseUrl, MfilFileName = "d3b-19561-9EF4DEF9767D3A16A8354368C012C3B5.mfil", ReleaseDate = "2013-12-12", Summary = "RoS Closed Beta Iteration 1 (Act V Westmarch)" },
+            new() { Version = "Beta", BuildNumber = 19177, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Beta, BaseBuildNumber = 18962, BaseDirectUrl = RosBetaDirectBaseUrl, MfilFileName = "d3b-19177-59FEF1D88EEE46964D175D7C2BE87DF9.mfil", ReleaseDate = "2013-12-03", Summary = "RoS Closed Beta F&F First Update Patch" },
+            new() { Version = "Beta", BuildNumber = 18962, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Beta, BaseBuildNumber = 18962, BaseDirectUrl = RosBetaDirectBaseUrl, MfilFileName = "", ReleaseDate = "2013-08-30", Summary = "Original RoS Friends & Family Closed Beta Base Client" },
+            // =========================================================================
+            // VANILLA CLASSIC Ã¢â‚¬â€ RETAIL CATEGORY
+            // =========================================================================
+            new() { Version = "1.0.8a", BuildNumber = 16603, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2013-05-10", Summary = "Final Vanilla 1.0.8 Hotfix Build" },
+            new() { Version = "1.0.8",  BuildNumber = 16416, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2013-05-07", Summary = "Monster Density & Co-op XP Bonus Patch" },
+            new() { Version = "1.0.7a", BuildNumber = 15295, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2013-02-15", Summary = "Duelling & Demon Hunter Hotfix" },
+            new() { Version = "1.0.7",  BuildNumber = 14633, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2013-02-12", Summary = "Brawling, Marquise Gems & BoA Crafting" },
+            new() { Version = "1.0.6a", BuildNumber = 13644, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-12-06", Summary = "Quest & Stability Patch" },
+            new() { Version = "1.0.6",  BuildNumber = 13300, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-11-27", Summary = "Network & Bugfix Patch" },
+            new() { Version = "1.0.5a", BuildNumber = 12811, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-10-25", Summary = "Crash & Achievement Fix Patch" },
+            new() { Version = "1.0.5",  BuildNumber = 12480, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-10-16", Summary = "Monster Power (MP1-10) & Infernal Machine" },
+            new() { Version = "1.0.4",  BuildNumber = 11327, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-08-21", Summary = "Paragon 1.0 (Levels 1-100) & Legendary Overhaul" },
+            new() { Version = "1.0.3b", BuildNumber = 10485, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-07-10", Summary = "Auction House & Stability Patch" },
+            new() { Version = "1.0.3a", BuildNumber = 10235, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-06-26", Summary = "Zombie Bears & General Bugfix Patch" },
+            new() { Version = "1.0.3",  BuildNumber = 10057, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-06-19", Summary = "Inferno Tuning, IAS Nerf & Repair Cost Patch" },
+            new() { Version = "1.0.2c", BuildNumber = 9991,  IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-06-12", Summary = "Mac/PC Client Stability Patch" },
+            new() { Version = "1.0.2b", BuildNumber = 9950,  IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-06-07", Summary = "Login & Auction House Responsiveness Patch" },
+            new() { Version = "1.0.2a", BuildNumber = 9858,  IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-06-01", Summary = "Item & Skill Tooltip Fix Patch" },
+            new() { Version = "1.0.2",  BuildNumber = 9749,  IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-05-29", Summary = "First Post-Launch Client Patch" },
+            new() { Version = "1.0.1",  BuildNumber = 9558,  IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-05-15", Summary = "Original May 15, 2012 Launch Day Patch" },
+            new() { Version = "1.0.0",  BuildNumber = 8370,  IsCasc = false, IsRoS = false, Category = D3BuildCategory.Retail, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-05-14", Summary = "Original Unpatched Retail DVD Base MPQ Build" },
+            // =========================================================================
+            // VANILLA CLASSIC Ã¢â‚¬â€ PUBLIC TEST REALM (PTR)
+            // =========================================================================
+            new() { Version = "1.0.8", BuildNumber = 16256, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Ptr, BaseBuildNumber = 10485, BaseDirectUrl = VanillaPtrDirectBaseUrl, MfilFileName = "d3t-16256-53616B71C058AED2B1A1D76B6315B158.mfil", ReleaseDate = "2013-04-30", Summary = "Patch 1.0.8 PTR Release Candidate 4" },
+            new() { Version = "1.0.8", BuildNumber = 16107, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Ptr, BaseBuildNumber = 10485, BaseDirectUrl = VanillaPtrDirectBaseUrl, MfilFileName = "d3t-16107-747CB4A9FF241AA308578179C4F07E8F.mfil", ReleaseDate = "2013-04-23", Summary = "Patch 1.0.8 PTR Iteration 3 (Matchmaking Tags)" },
+            new() { Version = "1.0.8", BuildNumber = 16033, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Ptr, BaseBuildNumber = 10485, BaseDirectUrl = VanillaPtrDirectBaseUrl, MfilFileName = "d3t-16033-B36721880A28BA1B030B300DA7323A29.mfil", ReleaseDate = "2013-04-16", Summary = "Patch 1.0.8 PTR Iteration 2 (Identify All & Density)" },
+            new() { Version = "1.0.8", BuildNumber = 15926, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Ptr, BaseBuildNumber = 10485, BaseDirectUrl = VanillaPtrDirectBaseUrl, MfilFileName = "d3t-15926-6DBCA3344FA8F980522B03661369D850.mfil", ReleaseDate = "2013-04-09", Summary = "Patch 1.0.8 Initial PTR Launch Build" },
+            new() { Version = "1.0.7", BuildNumber = 14528, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Ptr, BaseBuildNumber = 10485, BaseDirectUrl = VanillaPtrDirectBaseUrl, MfilFileName = "d3t-14528-27C385F1BC96E992210BD3DEDBECFA8F.mfil", ReleaseDate = "2013-02-05", Summary = "Patch 1.0.7 PTR Release Candidate 4" },
+            new() { Version = "1.0.7", BuildNumber = 14456, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Ptr, BaseBuildNumber = 10485, BaseDirectUrl = VanillaPtrDirectBaseUrl, MfilFileName = "d3t-14456-57EB0C55496919125E32926235DF86CA.mfil", ReleaseDate = "2013-01-29", Summary = "Patch 1.0.7 PTR Iteration 3 (Marquise Gems Balance)" },
+            new() { Version = "1.0.7", BuildNumber = 14295, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Ptr, BaseBuildNumber = 10485, BaseDirectUrl = VanillaPtrDirectBaseUrl, MfilFileName = "d3t-14295-404EE66D5F09A07CB8A988D203891CDB.mfil", ReleaseDate = "2013-01-22", Summary = "Patch 1.0.7 PTR Iteration 2 (Archon & Tempest Rush)" },
+            new() { Version = "1.0.7", BuildNumber = 14161, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Ptr, BaseBuildNumber = 10485, BaseDirectUrl = VanillaPtrDirectBaseUrl, MfilFileName = "d3t-14161-A5272C89921AA134282B3A1E2C582A6C.mfil", ReleaseDate = "2013-01-15", Summary = "Patch 1.0.7 Initial PTR Launch Build (Brawling)" },
+            new() { Version = "1.0.5", BuildNumber = 12389, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Ptr, BaseBuildNumber = 10485, BaseDirectUrl = VanillaPtrDirectBaseUrl, MfilFileName = "d3t-12389-2071DA320DE093A4E697154F6D9DB180.mfil", ReleaseDate = "2012-10-08", Summary = "Patch 1.0.5 PTR Release Candidate 4" },
+            new() { Version = "1.0.5", BuildNumber = 12289, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Ptr, BaseBuildNumber = 10485, BaseDirectUrl = VanillaPtrDirectBaseUrl, MfilFileName = "d3t-12289-C26F80F4E654CE96B5284C0543B857E7.mfil", ReleaseDate = "2012-10-02", Summary = "Patch 1.0.5 PTR Iteration 3 (Infernal Machine)" },
+            new() { Version = "1.0.5", BuildNumber = 12166, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Ptr, BaseBuildNumber = 10485, BaseDirectUrl = VanillaPtrDirectBaseUrl, MfilFileName = "d3t-12166-8947593DAC4C924A21CDE449A4D7BCA3.mfil", ReleaseDate = "2012-09-24", Summary = "Patch 1.0.5 PTR Iteration 2 (Monster Power)" },
+            new() { Version = "1.0.5", BuildNumber = 12150, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Ptr, BaseBuildNumber = 10485, BaseDirectUrl = VanillaPtrDirectBaseUrl, MfilFileName = "d3t-12150-9A72661DD9DE987F9D25641ECA1A3DE7.mfil", ReleaseDate = "2012-09-21", Summary = "Patch 1.0.5 Initial PTR Launch Build" },
+            new() { Version = "1.0.3", BuildNumber = 10485, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Ptr, BaseBuildNumber = 10485, BaseDirectUrl = VanillaPtrDirectBaseUrl, MfilFileName = "", ReleaseDate = "2012-07-10", Summary = "Vanilla PTR Base Client Archive" },
+            // =========================================================================
+            // VANILLA CLASSIC Ã¢â‚¬â€ CLOSED BETA CATEGORY
+            // =========================================================================
+            new() { Version = "Beta", BuildNumber = 9359, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3b-9359-68ED600EDCC64664BF58EB40B2D7194A.mfil", ReleaseDate = "2012-04-19", Summary = "Vanilla Open Beta Weekend Client (April 20-23, 2012)" },
+            new() { Version = "Beta", BuildNumber = 9327, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3b-9327-B14F344A3DCA481497ACE3B1C8014883.mfil", ReleaseDate = "2012-04-17", Summary = "Vanilla Beta Patch 17" },
+            new() { Version = "Beta", BuildNumber = 9183, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3-9183-51F7EC2D1A85DEC15996ADA75AF737B4.mfil", ReleaseDate = "2012-04-09", Summary = "Vanilla Beta Patch 16" },
+            new() { Version = "Beta", BuildNumber = 8896, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3-8896-9A8717AF2CEC9EA05BCE2DFE632BCC3F.mfil", ReleaseDate = "2012-03-16", Summary = "Vanilla Beta Patch 15" },
+            new() { Version = "Beta", BuildNumber = 8815, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3-8815-45C1BECF28BA4F6677F934AC8643348A.mfil", ReleaseDate = "2012-03-08", Summary = "Vanilla Beta Patch 14 (Hardcore Mode Added)" },
+            new() { Version = "Beta", BuildNumber = 8610, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3-8610-C5D7D98C17EDB87C5DD07225CC40208B.mfil", ReleaseDate = "2012-02-18", Summary = "Vanilla Beta Patch 13 (Skill Rune System Overhaul)" },
+            new() { Version = "Beta", BuildNumber = 8392, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3-8392-B5B8EBBA53C362322E1D90D965DAE796.mfil", ReleaseDate = "2012-02-03", Summary = "Vanilla Beta Patch 12" },
+            new() { Version = "Beta", BuildNumber = 8350, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3-8350-CB476B021D6C830BC8C07D369A685190.mfil", ReleaseDate = "2012-01-30", Summary = "Vanilla Beta Patch 11" },
+            new() { Version = "Beta", BuildNumber = 8296, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3-8296-941A7BD6BAF437A7A7773644DA9B795B.mfil", ReleaseDate = "2012-01-23", Summary = "Vanilla Beta Patch 10" },
+            new() { Version = "Beta", BuildNumber = 8101, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3-8101-1A02921B149B3C3E410303C0037FAFFF.mfil", ReleaseDate = "2011-12-20", Summary = "Vanilla Beta Patch 9 (Attribute & Skill Overhaul)" },
+            new() { Version = "Beta", BuildNumber = 8059, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3-8059-C4FD424694EBBFB8D03094F26EE3C415.mfil", ReleaseDate = "2011-12-15", Summary = "Vanilla Beta Patch 8 (BattleTags Introduced)" },
+            new() { Version = "Beta", BuildNumber = 7931, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3-7931-7AE2328F2FF7EE9F27D746E4BEF83EB8.mfil", ReleaseDate = "2011-12-01", Summary = "Vanilla Beta Patch 7 (Real-Money Auction House)" },
+            new() { Version = "Beta", BuildNumber = 7841, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3-7841-D32C2A1C2D49B5109110980904077160.mfil", ReleaseDate = "2011-11-17", Summary = "Vanilla Beta Patch 6 (Profiles & Achievements)" },
+            new() { Version = "Beta", BuildNumber = 7728, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3-7728-812E3AE9810AA1AE273833DF0728C747.mfil", ReleaseDate = "2011-11-03", Summary = "Vanilla Beta Patch 5 (Demon Hunter Rework)" },
+            new() { Version = "Beta", BuildNumber = 7447, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3-7447-EC3B8521C7D7F248B915765294C7EB0D.mfil", ReleaseDate = "2011-09-26", Summary = "Vanilla Beta Patch 4 (Server Data Removed)" },
+            new() { Version = "Beta", BuildNumber = 7338, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3-7338-9B15715C360B12A3088699E62BCB8059.mfil", ReleaseDate = "2011-09-14", Summary = "Vanilla Beta Patch 3 (Auction House Added)" },
+            new() { Version = "Beta", BuildNumber = 7318, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3-7318-A0F73AD55B049A9A6B3D94D7B944F07E.mfil", ReleaseDate = "2011-09-07", Summary = "Vanilla Beta Patch 2" },
+            new() { Version = "Beta", BuildNumber = 7200, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "d3-7200-31F92CE61E8FD73FE6D0B4C838973230.mfil", ReleaseDate = "2011-09-02", Summary = "Vanilla Beta Patch 1 (Friends & Family Launch)" },
+            new() { Version = "Beta", BuildNumber = 7162, IsCasc = false, IsRoS = false, Category = D3BuildCategory.Beta, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "", ReleaseDate = "2011-08-18", Summary = "Original Vanilla Friends & Family Beta Base Client" },
         };
 
-        public static D3BuildCatalogItem Resolve(string versionOrBuild)
+        public static D3BuildCatalogItem? Resolve(string query)
         {
-            if (string.IsNullOrWhiteSpace(versionOrBuild) ||
-                versionOrBuild.Equals("live", StringComparison.OrdinalIgnoreCase) ||
-                versionOrBuild.Equals("latest", StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrWhiteSpace(query)) return null;
+            string q = query.Trim().ToLowerInvariant();
+            if (q == "live" || q == "latest" || q == "newest") return AllBuilds[0];
+            if (q == "ptr") return AllBuilds.FirstOrDefault(b => b.Category == D3BuildCategory.Ptr && b.IsCasc);
+            if (q == "cn") return AllBuilds.FirstOrDefault(b => b.ProductCode == "d3cn");
+            if (q == "vanilla" || q == "vanilla-latest") return AllBuilds.FirstOrDefault(b => !b.IsRoS && b.Category == D3BuildCategory.Retail);
+            if (q == "beta") return AllBuilds.FirstOrDefault(b => b.Category == D3BuildCategory.Beta);
+            if (int.TryParse(q, out int bNum))
             {
-                return AllBuilds[0];
+                var m = AllBuilds.FirstOrDefault(b => b.BuildNumber == bNum);
+                if (m != null) return m;
             }
-
-            string clean = versionOrBuild.Trim();
-            foreach (var item in AllBuilds)
-            {
-                if (item.BuildNumber.ToString() == clean ||
-                    item.Version.Equals(clean, StringComparison.OrdinalIgnoreCase) ||
-                    $"{item.Version}.{item.BuildNumber}".Equals(clean, StringComparison.OrdinalIgnoreCase))
-                {
-                    return item;
-                }
-            }
-            return null;
+            return AllBuilds.FirstOrDefault(b => b.Version.Equals(q, StringComparison.OrdinalIgnoreCase)
+                                              || $"{b.Version}.{b.BuildNumber}".Equals(q, StringComparison.OrdinalIgnoreCase)
+                                              || b.DisplayTitle.Contains(q, StringComparison.OrdinalIgnoreCase));
         }
     }
 
-    public sealed class MfilEntry
+            public sealed class MfilEntry
     {
         public string RelativePath { get; set; }
         public long Size { get; set; }
@@ -126,7 +204,6 @@ namespace D3Downloader
         public int Flags { get; set; }
         public string Tag { get; set; }
     }
-
     public static class LegacyMpqInstaller
     {
         public static List<MfilEntry> ParseMfil(string mfilContent)
@@ -474,6 +551,7 @@ namespace D3Downloader
             await inStream.CopyToAsync(outStream, ct);
         }
     }
+
 
     internal sealed class MpqArchiveReader
     {

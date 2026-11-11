@@ -75,7 +75,12 @@ namespace D3Downloader
         private readonly List<Panel> _vanillaVersionChips = new();
 
         // CDN Availability Tracking & Animation
-        private readonly Dictionary<int, CdnAvailability> _cdnStatuses = new();
+        private readonly Dictionary<string, CdnAvailability> _cdnStatuses = new();
+        private static string GetBuildKey(D3BuildCatalogItem b) => $"{b.ProductCode}_{b.Category}_{b.BuildNumber}_{b.IsCasc}";
+        private D3BuildCategory _rosCategory = D3BuildCategory.Retail;
+        private D3BuildCategory _vanillaCategory = D3BuildCategory.Retail;
+        private BufferedPanel _rosChipsContainer;
+        private BufferedPanel _vanillaChipsContainer;
         private readonly System.Windows.Forms.Timer _pulseTimer;
         private float _pulsePhase = 0f;
         private static readonly System.Net.Http.HttpClient _probeClient = new()
@@ -134,7 +139,7 @@ namespace D3Downloader
             // Initialize all builds to Checking
             foreach (var b in D3BuildCatalog.AllBuilds)
             {
-                _cdnStatuses[b.BuildNumber] = CdnAvailability.Checking;
+                _cdnStatuses[GetBuildKey(b)] = CdnAvailability.Checking;
             }
 
             // Pulse timer for breathing dot animation (40ms ~ 25 FPS)
@@ -679,9 +684,9 @@ namespace D3Downloader
                     e.Graphics.FillRectangle(fadeBrush, fadeRect);
                 }
 
-                string badgeText = isRos ? "EXPANSION • 15 BUILDS" : "CLASSIC • 19 BUILDS";
+                string badgeText = isRos ? "EXPANSION • 41 BUILDS" : "CLASSIC • 50 BUILDS";
                 Color badgeColor = isRos ? Color.FromArgb(91, 215, 43) : Color.FromArgb(245, 158, 11);
-                var badgeRect = new Rectangle(16, 12, isRos ? 152 : 134, 20);
+                var badgeRect = new Rectangle(16, 12, isRos ? 152 : 138, 20);
                 using (var bPath = CreateRoundRect(badgeRect, 3))
                 using (var bFill = new SolidBrush(badgeColor))
                 using (var bFont = new Font("Segoe UI", 7.5f, FontStyle.Bold))
@@ -734,7 +739,7 @@ namespace D3Downloader
                 }
 
                 // Draw breathing status indicator in the version box
-                CdnAvailability curStatus = _cdnStatuses.TryGetValue(curBuild.BuildNumber, out var st) ? st : CdnAvailability.Checking;
+                CdnAvailability curStatus = _cdnStatuses.TryGetValue(GetBuildKey(curBuild), out var st) ? st : CdnAvailability.Checking;
                 DrawStatusPill(e.Graphics, new Point(verBoxRect.Right - 84, verBoxRect.Y + 16), curStatus);
 
                 DrawChevron(e.Graphics, new Point(verBoxRect.Right - 16, verBoxRect.Y + 24), isExp, Color.FromArgb(148, 163, 184));
@@ -822,19 +827,86 @@ namespace D3Downloader
 
         private Panel BuildRosDrawer()
         {
-            var rosBuilds = D3BuildCatalog.AllBuilds.Where(b => b.IsRoS).ToList();
-            int rows = (int)Math.Ceiling(rosBuilds.Count / 3.0);
-            int drawerHeight = 50 + rows * 52 + 14;
-
             var drawer = new BufferedPanel
             {
                 Location = new Point(0, BANNER_HEIGHT),
-                Size = new Size(936, drawerHeight),
+                Size = new Size(936, 450),
                 BackColor = Color.FromArgb(11, 14, 22),
                 Visible = false
             };
 
-            var binToggleRect = new Rectangle(648, 12, 268, 22);
+            var binToggleRect = new Rectangle(648, 10, 268, 22);
+            var tabRetailRect = new Rectangle(20, 36, 150, 32);
+            var tabPtrRect = new Rectangle(176, 36, 186, 32);
+            var tabBetaRect = new Rectangle(368, 36, 156, 32);
+
+            _rosChipsContainer = new BufferedPanel
+            {
+                Location = new Point(0, 76),
+                Size = new Size(936, 360),
+                BackColor = Color.Transparent
+            };
+            drawer.Controls.Add(_rosChipsContainer);
+
+            void PopulateRosChips()
+            {
+                _rosChipsContainer.Controls.Clear();
+                _rosVersionChips.Clear();
+
+                var filtered = D3BuildCatalog.AllBuilds.Where(b => b.IsRoS && b.Category == _rosCategory).ToList();
+                int rows = Math.Max(1, (int)Math.Ceiling(filtered.Count / 3.0));
+                int containerHeight = rows * 52 + 8;
+                _rosChipsContainer.Height = containerHeight;
+                int drawerHeight = 84 + containerHeight;
+                drawer.Height = drawerHeight;
+                if (_rosExpanded)
+                {
+                    _rosCardWrapper.Height = BANNER_HEIGHT + drawerHeight;
+                    ReflowTiles();
+                }
+
+                int colWidth = 292;
+                int rowHeight = 46;
+
+                for (int i = 0; i < filtered.Count; i++)
+                {
+                    var item = filtered[i];
+                    int col = i % 3;
+                    int row = i / 3;
+                    string badge = (i == 0 && _rosCategory == D3BuildCategory.Retail)
+                        ? "LIVE"
+                        : (item.IsCasc ? item.ProductCode.ToUpperInvariant()
+                        : (item.BuildNumber == 20813 ? "BASE"
+                        : (item.Category == D3BuildCategory.Beta ? "BETA"
+                        : (item.Category == D3BuildCategory.Ptr ? "PTR" : "MPQ"))));
+
+                    var chip = CreateVersionChip(
+                        item,
+                        badge,
+                        new Point(20 + col * (colWidth + 9), row * (rowHeight + 6)),
+                        new Size(colWidth, rowHeight),
+                        isSelected: () => ReferenceEquals(item, _selectedRosBuild),
+                        onClick: () =>
+                        {
+                            _selectedRosBuild = item;
+                            if (!_userEditedTargetDir)
+                            {
+                                _txtTargetLocation.Text = item.BuildNumber == 99920
+                                    ? @"C:\Games\Diablo III"
+                                    : $@"C:\Games\Diablo III ({item.Version}.{item.BuildNumber})";
+                            }
+                            foreach (var c in _rosVersionChips) c.Invalidate();
+                            _rosBannerPanel.Invalidate();
+                        });
+
+                    _rosVersionChips.Add(chip);
+                    _rosChipsContainer.Controls.Add(chip);
+                }
+            }
+
+            int countRetail = D3BuildCatalog.AllBuilds.Count(b => b.IsRoS && b.Category == D3BuildCategory.Retail);
+            int countPtr = D3BuildCatalog.AllBuilds.Count(b => b.IsRoS && b.Category == D3BuildCategory.Ptr);
+            int countBeta = D3BuildCatalog.AllBuilds.Count(b => b.IsRoS && b.Category == D3BuildCategory.Beta);
 
             drawer.Paint += (_, e) =>
             {
@@ -844,16 +916,23 @@ namespace D3Downloader
 
                 using var hdrFont = new Font("Segoe UI", 8.25f, FontStyle.Bold);
                 using var hdrBrush = new SolidBrush(Color.FromArgb(154, 166, 191));
-                e.Graphics.DrawString("CHOOSE REAPER OF SOULS BUILD (15 BUILDS — MODERN CASC & 2014 MPQ EXPANSION):", hdrFont, hdrBrush, 20, 14);
+                e.Graphics.DrawString("CHOOSE REAPER OF SOULS BUILD (41 BUILDS ARCHIVED):", hdrFont, hdrBrush, 20, 13);
 
                 DrawModernCheckBox(e.Graphics, binToggleRect.Location, _chkRosBinariesOnly,
                     "Binaries Only (~35 MB Fast Patch)", Color.FromArgb(126, 231, 135));
+
+                // Draw Segmented Tabs
+                DrawDrawerTab(e.Graphics, tabRetailRect, $"⭐ Retail ({countRetail})", _rosCategory == D3BuildCategory.Retail, Color.FromArgb(59, 130, 246));
+                DrawDrawerTab(e.Graphics, tabPtrRect, $"🧪 Public Test Realm ({countPtr})", _rosCategory == D3BuildCategory.Ptr, Color.FromArgb(168, 85, 247));
+                DrawDrawerTab(e.Graphics, tabBetaRect, $"🔒 Closed Beta ({countBeta})", _rosCategory == D3BuildCategory.Beta, Color.FromArgb(234, 179, 8));
             };
 
             drawer.MouseMove += (_, e) =>
             {
-                drawer.Cursor = binToggleRect.Contains(e.Location) ? Cursors.Hand : Cursors.Default;
+                bool hover = binToggleRect.Contains(e.Location) || tabRetailRect.Contains(e.Location) || tabPtrRect.Contains(e.Location) || tabBetaRect.Contains(e.Location);
+                drawer.Cursor = hover ? Cursors.Hand : Cursors.Default;
             };
+
             drawer.MouseClick += (_, e) =>
             {
                 if (binToggleRect.Contains(e.Location))
@@ -861,60 +940,109 @@ namespace D3Downloader
                     _chkRosBinariesOnly = !_chkRosBinariesOnly;
                     drawer.Invalidate();
                 }
+                else if (tabRetailRect.Contains(e.Location) && _rosCategory != D3BuildCategory.Retail)
+                {
+                    _rosCategory = D3BuildCategory.Retail;
+                    PopulateRosChips();
+                    drawer.Invalidate();
+                }
+                else if (tabPtrRect.Contains(e.Location) && _rosCategory != D3BuildCategory.Ptr)
+                {
+                    _rosCategory = D3BuildCategory.Ptr;
+                    PopulateRosChips();
+                    drawer.Invalidate();
+                }
+                else if (tabBetaRect.Contains(e.Location) && _rosCategory != D3BuildCategory.Beta)
+                {
+                    _rosCategory = D3BuildCategory.Beta;
+                    PopulateRosChips();
+                    drawer.Invalidate();
+                }
             };
 
-            _rosVersionChips.Clear();
-            int colWidth = 292;
-            int rowHeight = 46;
-
-            for (int i = 0; i < rosBuilds.Count; i++)
-            {
-                var item = rosBuilds[i];
-                int col = i % 3;
-                int row = i / 3;
-                string badge = i == 0 ? "LIVE" : (item.IsCasc ? item.ProductCode.ToUpperInvariant() : (item.BuildNumber == 20813 ? "BASE" : (item.Version == "Beta" ? "BETA" : "MPQ")));
-
-                var chip = CreateVersionChip(
-                    item,
-                    badge,
-                    new Point(20 + col * (colWidth + 9), 42 + row * (rowHeight + 6)),
-                    new Size(colWidth, rowHeight),
-                    isSelected: () => ReferenceEquals(item, _selectedRosBuild),
-                    onClick: () =>
-                    {
-                        _selectedRosBuild = item;
-                        if (!_userEditedTargetDir)
-                        {
-                            _txtTargetLocation.Text = item.BuildNumber == 99920
-                                ? @"C:\Games\Diablo III"
-                                : $@"C:\Games\Diablo III ({item.Version}.{item.BuildNumber})";
-                        }
-                        foreach (var c in _rosVersionChips) c.Invalidate();
-                        _rosBannerPanel.Invalidate();
-                    });
-
-                _rosVersionChips.Add(chip);
-                drawer.Controls.Add(chip);
-            }
-
+            PopulateRosChips();
             return drawer;
         }
 
         private Panel BuildVanillaDrawer()
         {
-            var vanillaBuilds = D3BuildCatalog.AllBuilds.Where(b => !b.IsRoS).ToList();
-            int rows = (int)Math.Ceiling(vanillaBuilds.Count / 3.0);
-            int drawerHeight = 50 + rows * 52 + 14;
-
             var drawer = new BufferedPanel
             {
                 Location = new Point(0, BANNER_HEIGHT),
-                Size = new Size(936, drawerHeight),
+                Size = new Size(936, 450),
                 BackColor = Color.FromArgb(11, 14, 22),
                 Visible = false
             };
 
-            var binToggleRect = new Rectangle(648, 12, 268, 22);
+            var binToggleRect = new Rectangle(648, 10, 268, 22);
+            var tabRetailRect = new Rectangle(20, 36, 150, 32);
+            var tabPtrRect = new Rectangle(176, 36, 186, 32);
+            var tabBetaRect = new Rectangle(368, 36, 156, 32);
+
+            _vanillaChipsContainer = new BufferedPanel
+            {
+                Location = new Point(0, 76),
+                Size = new Size(936, 360),
+                BackColor = Color.Transparent
+            };
+            drawer.Controls.Add(_vanillaChipsContainer);
+
+            void PopulateVanillaChips()
+            {
+                _vanillaChipsContainer.Controls.Clear();
+                _vanillaVersionChips.Clear();
+
+                var filtered = D3BuildCatalog.AllBuilds.Where(b => !b.IsRoS && b.Category == _vanillaCategory).ToList();
+                int rows = Math.Max(1, (int)Math.Ceiling(filtered.Count / 3.0));
+                int containerHeight = rows * 52 + 8;
+                _vanillaChipsContainer.Height = containerHeight;
+                int drawerHeight = 84 + containerHeight;
+                drawer.Height = drawerHeight;
+                if (_vanillaExpanded)
+                {
+                    _vanillaCardWrapper.Height = BANNER_HEIGHT + drawerHeight;
+                    ReflowTiles();
+                }
+
+                int colWidth = 292;
+                int rowHeight = 46;
+
+                for (int i = 0; i < filtered.Count; i++)
+                {
+                    var item = filtered[i];
+                    int col = i % 3;
+                    int row = i / 3;
+                    string badge = (i == 0 && _vanillaCategory == D3BuildCategory.Retail)
+                        ? "NEWEST"
+                        : (item.BuildNumber == 8370 ? "BASE"
+                        : (item.Category == D3BuildCategory.Beta ? "BETA"
+                        : (item.Category == D3BuildCategory.Ptr ? "PTR" : "MPQ")));
+
+                    var chip = CreateVersionChip(
+                        item,
+                        badge,
+                        new Point(20 + col * (colWidth + 9), row * (rowHeight + 6)),
+                        new Size(colWidth, rowHeight),
+                        isSelected: () => ReferenceEquals(item, _selectedVanillaBuild),
+                        onClick: () =>
+                        {
+                            _selectedVanillaBuild = item;
+                            if (!_userEditedTargetDir)
+                            {
+                                _txtTargetLocation.Text = $@"C:\Games\Diablo III ({item.Version}.{item.BuildNumber})";
+                            }
+                            foreach (var c in _vanillaVersionChips) c.Invalidate();
+                            _vanillaBannerPanel.Invalidate();
+                        });
+
+                    _vanillaVersionChips.Add(chip);
+                    _vanillaChipsContainer.Controls.Add(chip);
+                }
+            }
+
+            int countRetail = D3BuildCatalog.AllBuilds.Count(b => !b.IsRoS && b.Category == D3BuildCategory.Retail);
+            int countPtr = D3BuildCatalog.AllBuilds.Count(b => !b.IsRoS && b.Category == D3BuildCategory.Ptr);
+            int countBeta = D3BuildCatalog.AllBuilds.Count(b => !b.IsRoS && b.Category == D3BuildCategory.Beta);
 
             drawer.Paint += (_, e) =>
             {
@@ -924,16 +1052,23 @@ namespace D3Downloader
 
                 using var hdrFont = new Font("Segoe UI", 8.25f, FontStyle.Bold);
                 using var hdrBrush = new SolidBrush(Color.FromArgb(154, 166, 191));
-                e.Graphics.DrawString("CHOOSE HISTORICAL VANILLA VERSION (1.0.0.8370 – 1.0.8a.16603):", hdrFont, hdrBrush, 20, 14);
+                e.Graphics.DrawString("CHOOSE VANILLA CLASSIC BUILD (50 BUILDS ARCHIVED):", hdrFont, hdrBrush, 20, 13);
 
                 DrawModernCheckBox(e.Graphics, binToggleRect.Location, _chkVanillaBinariesOnly,
                     "Binaries Only (~35 MB Fast Patch)", Color.FromArgb(126, 231, 135));
+
+                // Draw Segmented Tabs
+                DrawDrawerTab(e.Graphics, tabRetailRect, $"⭐ Retail ({countRetail})", _vanillaCategory == D3BuildCategory.Retail, Color.FromArgb(59, 130, 246));
+                DrawDrawerTab(e.Graphics, tabPtrRect, $"🧪 Public Test Realm ({countPtr})", _vanillaCategory == D3BuildCategory.Ptr, Color.FromArgb(168, 85, 247));
+                DrawDrawerTab(e.Graphics, tabBetaRect, $"🔒 Closed Beta ({countBeta})", _vanillaCategory == D3BuildCategory.Beta, Color.FromArgb(234, 179, 8));
             };
 
             drawer.MouseMove += (_, e) =>
             {
-                drawer.Cursor = binToggleRect.Contains(e.Location) ? Cursors.Hand : Cursors.Default;
+                bool hover = binToggleRect.Contains(e.Location) || tabRetailRect.Contains(e.Location) || tabPtrRect.Contains(e.Location) || tabBetaRect.Contains(e.Location);
+                drawer.Cursor = hover ? Cursors.Hand : Cursors.Default;
             };
+
             drawer.MouseClick += (_, e) =>
             {
                 if (binToggleRect.Contains(e.Location))
@@ -941,41 +1076,43 @@ namespace D3Downloader
                     _chkVanillaBinariesOnly = !_chkVanillaBinariesOnly;
                     drawer.Invalidate();
                 }
+                else if (tabRetailRect.Contains(e.Location) && _vanillaCategory != D3BuildCategory.Retail)
+                {
+                    _vanillaCategory = D3BuildCategory.Retail;
+                    PopulateVanillaChips();
+                    drawer.Invalidate();
+                }
+                else if (tabPtrRect.Contains(e.Location) && _vanillaCategory != D3BuildCategory.Ptr)
+                {
+                    _vanillaCategory = D3BuildCategory.Ptr;
+                    PopulateVanillaChips();
+                    drawer.Invalidate();
+                }
+                else if (tabBetaRect.Contains(e.Location) && _vanillaCategory != D3BuildCategory.Beta)
+                {
+                    _vanillaCategory = D3BuildCategory.Beta;
+                    PopulateVanillaChips();
+                    drawer.Invalidate();
+                }
             };
 
-            _vanillaVersionChips.Clear();
-            int colWidth = 292;
-            int rowHeight = 46;
-
-            for (int i = 0; i < vanillaBuilds.Count; i++)
-            {
-                var item = vanillaBuilds[i];
-                int col = i % 3;
-                int row = i / 3;
-                string badge = i == 0 ? "NEWEST" : (item.BuildNumber == 8370 ? "BASE" : (item.Version == "Beta" ? "BETA" : "MPQ"));
-
-                var chip = CreateVersionChip(
-                    item,
-                    badge,
-                    new Point(20 + col * (colWidth + 9), 42 + row * (rowHeight + 6)),
-                    new Size(colWidth, rowHeight),
-                    isSelected: () => ReferenceEquals(item, _selectedVanillaBuild),
-                    onClick: () =>
-                    {
-                        _selectedVanillaBuild = item;
-                        if (!_userEditedTargetDir)
-                        {
-                            _txtTargetLocation.Text = $@"C:\Games\Diablo III ({item.Version}.{item.BuildNumber})";
-                        }
-                        foreach (var c in _vanillaVersionChips) c.Invalidate();
-                        _vanillaBannerPanel.Invalidate();
-                    });
-
-                _vanillaVersionChips.Add(chip);
-                drawer.Controls.Add(chip);
-            }
-
+            PopulateVanillaChips();
             return drawer;
+        }
+
+        private static void DrawDrawerTab(Graphics g, Rectangle rect, string text, bool isSelected, Color activeAccent)
+        {
+            using var path = CreateRoundRect(rect, 4);
+            using var fill = new SolidBrush(isSelected ? Color.FromArgb(28, 38, 56) : Color.FromArgb(14, 18, 26));
+            using var pen = new Pen(isSelected ? activeAccent : Color.FromArgb(36, 45, 66), isSelected ? 1.5f : 1f);
+
+            g.FillPath(fill, path);
+            g.DrawPath(pen, path);
+
+            using var font = new Font("Segoe UI", 8.25f, isSelected ? FontStyle.Bold : FontStyle.Regular);
+            using var brush = new SolidBrush(isSelected ? Color.White : Color.FromArgb(148, 163, 184));
+            var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+            g.DrawString(text, font, brush, rect, sf);
         }
 
         private Panel CreateVersionChip(
@@ -1013,7 +1150,7 @@ namespace D3Downloader
                 e.Graphics.DrawString($"{item.Version}.{item.BuildNumber}", topFont, Brushes.White, 10, 6);
 
                 // Draw Per-File Live Status Pill
-                CdnAvailability status = _cdnStatuses.TryGetValue(item.BuildNumber, out var s) ? s : CdnAvailability.Checking;
+                CdnAvailability status = _cdnStatuses.TryGetValue(GetBuildKey(item), out var s) ? s : CdnAvailability.Checking;
                 DrawStatusPill(e.Graphics, new Point(chip.Width - 118, 7), status);
 
                 var tagRect = new Rectangle(chip.Width - 52, 7, 44, 16);
@@ -1121,7 +1258,7 @@ namespace D3Downloader
                         isOk = false;
                     }
 
-                    _cdnStatuses[build.BuildNumber] = isOk ? CdnAvailability.Ok : CdnAvailability.Offline;
+                    _cdnStatuses[GetBuildKey(build)] = isOk ? CdnAvailability.Ok : CdnAvailability.Offline;
                 });
             }
             await Task.CompletedTask;

@@ -152,22 +152,29 @@ namespace D3Downloader
 
             if (listVersions)
             {
-                Console.WriteLine("==========================================================================================================");
-                Console.WriteLine(" Available Official Blizzard CDN Diablo III Builds (34 Total Supported Builds)");
-                Console.WriteLine("==========================================================================================================");
+                Console.WriteLine("======================================================================================================================");
+                Console.WriteLine(" Available Official Blizzard CDN Diablo III Builds (91 Total Supported Builds Across Retail, PTR & Beta)");
+                Console.WriteLine("======================================================================================================================");
                 foreach (var b in D3BuildCatalog.AllBuilds)
                 {
                     string edition = b.IsRoS ? "Reaper of Souls" : "Vanilla Classic";
-                    Console.WriteLine($"  {b.Version,-8} | Build {b.BuildNumber,-6} | {(b.IsCasc ? "CASC 64-bit" : "MPQ  32-bit"),-11} | {edition,-16} | {b.ReleaseDate,-10} | {b.Summary}");
+                    string catStr = b.Category switch
+                    {
+                        D3BuildCategory.Retail => "Retail",
+                        D3BuildCategory.Ptr => "PTR",
+                        D3BuildCategory.Beta => "Beta",
+                        _ => "Other"
+                    };
+                    Console.WriteLine($"  {b.Version,-8} | Build {b.BuildNumber,-6} | {catStr,-6} | {(b.IsCasc ? "CASC 64-bit" : "MPQ  32-bit"),-11} | {edition,-16} | {b.ReleaseDate,-10} | {b.Summary}");
                 }
-                Console.WriteLine("==========================================================================================================");
+                Console.WriteLine("======================================================================================================================");
                 return 0;
             }
 
             var resolvedBuild = D3BuildCatalog.Resolve(versionArg);
             if (resolvedBuild == null)
             {
-                Console.Error.WriteLine($"[ERROR] Unknown version or build '{versionArg}'. Run with --list-versions to see all 34 supported builds.");
+                Console.Error.WriteLine($"[ERROR] Unknown version or build '{versionArg}'. Run with --list-versions to see all 91 supported builds.");
                 return 1;
             }
 
