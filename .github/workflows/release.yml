@@ -50,3 +50,4 @@ jobs:
             publish/Diablo3Forever.exe
             publish/SHA256SUMS.txt
           generate_release_notes: true
+          append_body: false
