@@ -1,10 +1,10 @@
 ﻿# Diablo 3 Forever
 
-**Diablo 3 Forever** (v1.3.0) is a standalone, zero-dependency open-source archival downloader and multi-version installer that streams and reconstructs **91 official Diablo III builds** (spanning retail releases, Public Test Realm PTR iterations, and closed/open beta milestone clients from 2011 to 2025) **100% directly from Blizzard's official CDN servers**.
+**Diablo 3 Forever** (v1.4.0) is a standalone, zero-dependency open-source archival downloader and multi-version installer that streams, reconstructs, and archives **91 official Diablo III builds** (spanning retail releases, Public Test Realm PTR iterations, and closed/open beta milestone clients from 2011 to 2025) **100% directly from Blizzard's official CDN servers**.
 
-> ### **[Download `Diablo3Forever.exe` v1.3.0 (Standalone Windows x64 - Zero Dependencies)](https://github.com/EliteLevelSoftware/D3Forever/releases/download/v1.3.0/Diablo3Forever.exe)**
-> - **Version:** `v1.3.0`
-> - **SHA-256:** `15f7975981a68739bb8ced7de7f320a780a09e08acc02daa6d36acfabaa126aa` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
+> ### **[Download `Diablo3Forever.exe` v1.4.0 (Standalone Windows x64 - Zero Dependencies)](https://github.com/EliteLevelSoftware/D3Forever/releases/download/v1.4.0/Diablo3Forever.exe)**
+> - **Version:** `v1.4.0`
+> - **SHA-256:** `7f792406d9156281b192b222ec4584b3bbcb8de016438e8ed2a88cc558b5edf3` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
 > - **Build Catalog & Provenance Tracker:** [`docs/Diablo3_Versions_Tracker_Enriched.xlsx`](docs/Diablo3_Versions_Tracker_Enriched.xlsx)
 > - Or browse **[GitHub Releases](https://github.com/EliteLevelSoftware/D3Forever/releases)**
 
@@ -15,10 +15,14 @@
 ## Key Features
 
 - **100% Direct from Official Blizzard CDNs:** Every byte is fetched directly from Blizzard's official distribution servers (`us.patch.battle.net`, `us.cdn.blizzard.com`, and `dist.blizzard.com.edgesuite.net`). Zero third-party mirrors, re-uploads, or modified game binaries are used.
-- **Bulk Archival & Cold Storage Backup Engine:** Backup and preserve the entire 91-build catalog to an external hard drive, USB storage, or network share (NAS) via a single click or CLI command:
-  - **⚡ Fast Binaries Archive (~3.2 GB Total):** Downloads and patches standalone ready-to-run executables (`Diablo III.exe`), DLLs, and configs for all 91 builds organized into subfolders (`\Vanilla\Retail\1.0.8a.16603`, `\RoS\PTR\2.1.2.28709`, etc.). Drops right into any existing Diablo III folder to immediately launch that version.
-  - **📦 Raw Blizzard CDN Mirror (~48 GB Total):** Mirrors all 6 unpatched Base MPQ archives (`8370.direct`, `20813.direct`, etc.), all 85 historical patch MPQs (`Updates/d3-0-*.MPQ`), and CASC index manifests. Complete 100% offline self-hosted cold preservation.
-  - **Integrity & Metadata:** Automatically generates `SHA256SUMS.txt` and `VERSION_INFO.txt` per build. Resumable at any time.
+- **Bulk Archival & Cold Storage Backup Engine:** Backup and preserve the entire 91-build catalog to an external hard drive, USB storage, or network share (NAS):
+  - **Live Destination Inventory Tracker:** Automatically inspects the destination drive in real time, displaying present vs. needed builds and guaranteeing 100% incremental resume (already verified files are never re-downloaded).
+  - **Dual-Mode Archival:** Download Fast Binaries AND the Raw Blizzard CDN Mirror at the same time via dual checkboxes.
+  - **⚡ Fast Binaries Archive (~3.2 GB Total):** Reconstructs standalone ready-to-run executables (`Diablo III.exe`), DLLs, and multi-locale launch scripts for all 91 builds.
+  - **📦 Raw Blizzard CDN Mirror:** Mirrors original unpatched Base MPQ archives, all 85 historical patch MPQs (`Updates/d3-0-*.MPQ`), and manifests for 100% offline cold storage.
+  - **Universal Multi-Language Pack (+~400 MB):** Includes translated text for ALL 13 official languages (`enUS`, `deDE`, `frFR`, `esES`, `ruRU`, `koKR`, `zhTW`, etc.) allowing any build to be launched in any language worldwide while saving over 32 GB of duplicate audio!
+  - **Offline Complete Game Assembler:** Assemble any historical build into a complete, 100% playable game client directly from your offline archive with ZERO internet connection required.
+  - **Integrity & Metadata:** Automatically generates `SHA256SUMS.txt`, `VERSION_INFO.txt`, and interactive `Launch-Game.bat` scripts per build.
 - **Segmented Drawer Tabs:** Both the **Reaper of Souls** and **Vanilla Classic** expansion drawers feature category tab selectors:
   - `⭐ Retail`: Official production retail patches and milestone base clients.
   - `🧪 Public Test Realm`: Historical PTR iterations, preview patches, and test candidates.

@@ -253,6 +253,48 @@ namespace D3Downloader
             return list;
         }
 
+        public static string TryResolveFromLocalArchive(string localArchiveRoot, string relativePath, D3BuildCatalogItem build)
+        {
+            if (string.IsNullOrWhiteSpace(localArchiveRoot) || !Directory.Exists(localArchiveRoot))
+                return null;
+
+            string normRel = relativePath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+            string baseRel = BackupEngine.GetRelativeFromBaseUrl(build.BaseDirectUrl).Replace('/', Path.DirectorySeparatorChar);
+
+            // 1. Check RawBlizzardCDN with base URL subpath
+            string p1 = Path.Combine(localArchiveRoot, "RawBlizzardCDN", baseRel, normRel);
+            if (File.Exists(p1) && new FileInfo(p1).Length > 0) return p1;
+
+            // 2. Check RawBlizzardCDN flat
+            string p2 = Path.Combine(localArchiveRoot, "RawBlizzardCDN", normRel);
+            if (File.Exists(p2) && new FileInfo(p2).Length > 0) return p2;
+
+            // 3. Check _BaseArchiveCache
+            string p3 = Path.Combine(localArchiveRoot, "_BaseArchiveCache", normRel);
+            if (File.Exists(p3) && new FileInfo(p3).Length > 0) return p3;
+
+            string p3b = Path.Combine(localArchiveRoot, "_BaseArchiveCache", Path.GetFileName(normRel));
+            if (File.Exists(p3b) && new FileInfo(p3b).Length > 0) return p3b;
+
+            // 4. Check directly under localArchiveRoot
+            string p4 = Path.Combine(localArchiveRoot, normRel);
+            if (File.Exists(p4) && new FileInfo(p4).Length > 0) return p4;
+
+            // 5. Check in Fast Binaries folder for this build
+            string editionDir = build.IsRoS ? "Reaper of Souls" : "Vanilla Classic";
+            string categoryDir = build.Category switch
+            {
+                D3BuildCategory.Retail => "Retail",
+                D3BuildCategory.Ptr => "Public Test Realm",
+                D3BuildCategory.Beta => "Closed Beta",
+                _ => "Other"
+            };
+            string p5 = Path.Combine(localArchiveRoot, editionDir, categoryDir, $"{build.Version}.{build.BuildNumber}", normRel);
+            if (File.Exists(p5) && new FileInfo(p5).Length > 0) return p5;
+
+            return null;
+        }
+
         public static async Task InstallLegacyMpqBuildAsync(
             HttpClient http,
             string targetDir,
@@ -262,7 +304,8 @@ namespace D3Downloader
             int maxConcurrency,
             Action<string> log,
             Action<double, string> onProgress = null,
-            CancellationToken ct = default)
+            CancellationToken ct = default,
+            string localArchiveSource = null)
         {
             Directory.CreateDirectory(targetDir);
             string mpqRoot = Path.Combine(targetDir, "Data_D3", "PC", "MPQs");
@@ -271,20 +314,33 @@ namespace D3Downloader
             List<MfilEntry> allMfilEntries = new();
             if (!string.IsNullOrWhiteSpace(build.MfilFileName))
             {
-                string mfilUrl = $"{build.BaseDirectUrl}/{build.MfilFileName}";
-                log($"[1/4] Fetching Blizzard .mfil manifest from {mfilUrl}...");
-                onProgress?.Invoke(2, "Fetching Blizzard .mfil manifest...");
-                try
+                string localMfil = TryResolveFromLocalArchive(localArchiveSource, build.MfilFileName, build);
+                if (localMfil != null && File.Exists(localMfil))
                 {
-                    string mfilText = await http.GetStringAsync(mfilUrl, ct);
+                    log($"[1/4] Resolving Blizzard .mfil manifest from local archive: {Path.GetFileName(localMfil)}");
+                    string mfilText = await File.ReadAllTextAsync(localMfil, Encoding.UTF8, ct);
                     await File.WriteAllTextAsync(Path.Combine(targetDir, "Diablo III.mfil"), mfilText, Encoding.UTF8, ct);
                     await File.WriteAllTextAsync(Path.Combine(targetDir, build.MfilFileName), mfilText, Encoding.UTF8, ct);
                     allMfilEntries = ParseMfil(mfilText);
-                    log($"      Parsed {allMfilEntries.Count} manifest entries across build archives.");
+                    log($"      Parsed {allMfilEntries.Count} manifest entries from local archive.");
                 }
-                catch (Exception ex)
+                else
                 {
-                    log($"      Notice: Could not load .mfil directly ({ex.Message}), proceeding with direct binary extraction.");
+                    string mfilUrl = $"{build.BaseDirectUrl}/{build.MfilFileName}";
+                    log($"[1/4] Fetching Blizzard .mfil manifest from {mfilUrl}...");
+                    onProgress?.Invoke(2, "Fetching Blizzard .mfil manifest...");
+                    try
+                    {
+                        string mfilText = await http.GetStringAsync(mfilUrl, ct);
+                        await File.WriteAllTextAsync(Path.Combine(targetDir, "Diablo III.mfil"), mfilText, Encoding.UTF8, ct);
+                        await File.WriteAllTextAsync(Path.Combine(targetDir, build.MfilFileName), mfilText, Encoding.UTF8, ct);
+                        allMfilEntries = ParseMfil(mfilText);
+                        log($"      Parsed {allMfilEntries.Count} manifest entries across build archives.");
+                    }
+                    catch (Exception ex)
+                    {
+                        log($"      Notice: Could not load .mfil directly ({ex.Message}), proceeding with direct binary extraction.");
+                    }
                 }
             }
             else
@@ -293,12 +349,26 @@ namespace D3Downloader
             }
             await File.WriteAllTextAsync(Path.Combine(targetDir, "Launcher.db"), locale, Encoding.ASCII, ct);
 
-            // Step 2: Download base-Win.mpq (always needed to extract & patch binaries)
+            // Step 2: Download or copy base-Win.mpq (always needed to extract & patch binaries)
             string baseWinMpqPath = Path.Combine(mpqRoot, "base-Win.mpq");
             string baseWinUrl = $"{build.BaseDirectUrl}/Data_D3/PC/MPQs/base-Win.mpq";
-            log($"[2/4] Downloading base-Win.mpq from Blizzard CDN ({build.BaseDirectUrl})...");
-            onProgress?.Invoke(5, "Downloading base-Win.mpq...");
-            await DownloadFileWithResumeAsync(http, baseWinUrl, baseWinMpqPath, -1L, ct);
+            string localBaseWin = TryResolveFromLocalArchive(localArchiveSource, "Data_D3/PC/MPQs/base-Win.mpq", build);
+
+            if (localBaseWin != null && File.Exists(localBaseWin))
+            {
+                log($"[2/4] Resolving base-Win.mpq from local archive: {localBaseWin}");
+                onProgress?.Invoke(5, "Copying base-Win.mpq from archive...");
+                if (!baseWinMpqPath.Equals(localBaseWin, StringComparison.OrdinalIgnoreCase))
+                {
+                    File.Copy(localBaseWin, baseWinMpqPath, overwrite: true);
+                }
+            }
+            else
+            {
+                log($"[2/4] Downloading base-Win.mpq from Blizzard CDN ({build.BaseDirectUrl})...");
+                onProgress?.Invoke(5, "Downloading base-Win.mpq...");
+                await DownloadFileWithResumeAsync(http, baseWinUrl, baseWinMpqPath, -1L, ct);
+            }
 
             byte[] baseWinBytes = await File.ReadAllBytesAsync(baseWinMpqPath, ct);
             var baseMpq = new MpqArchiveReader(baseWinBytes);
@@ -320,7 +390,7 @@ namespace D3Downloader
             }
             log($"      Extracted {extractedBase} base binaries ({build.BaseBuildNumber}).");
 
-            // Step 3: If TargetBuild > BaseBuildNumber, download Updates/d3-0-{BuildNumber}-Win-final.MPQ and apply diffs
+            // Step 3: If TargetBuild > BaseBuildNumber, download or copy Updates/d3-0-{BuildNumber}-Win-final.MPQ and apply diffs
             if (build.BuildNumber > build.BaseBuildNumber)
             {
                 string patchMpqName = $"d3-0-{build.BuildNumber}-Win-final.MPQ";
@@ -328,10 +398,23 @@ namespace D3Downloader
                 Directory.CreateDirectory(updatesDir);
                 string patchMpqPath = Path.Combine(updatesDir, patchMpqName);
                 string patchMpqUrl = $"{build.BaseDirectUrl}/Updates/{patchMpqName}";
+                string localPatchMpq = TryResolveFromLocalArchive(localArchiveSource, $"Updates/{patchMpqName}", build);
 
-                log($"[3/4] Downloading binary diff archive Updates/{patchMpqName} for {build.Version}.{build.BuildNumber}...");
-                onProgress?.Invoke(12, $"Downloading {patchMpqName}...");
-                await DownloadFileWithResumeAsync(http, patchMpqUrl, patchMpqPath, -1, ct);
+                if (localPatchMpq != null && File.Exists(localPatchMpq))
+                {
+                    log($"[3/4] Resolving patch archive Updates/{patchMpqName} from local archive: {localPatchMpq}");
+                    onProgress?.Invoke(12, $"Copying {patchMpqName} from archive...");
+                    if (!patchMpqPath.Equals(localPatchMpq, StringComparison.OrdinalIgnoreCase))
+                    {
+                        File.Copy(localPatchMpq, patchMpqPath, overwrite: true);
+                    }
+                }
+                else
+                {
+                    log($"[3/4] Downloading binary diff archive Updates/{patchMpqName} for {build.Version}.{build.BuildNumber}...");
+                    onProgress?.Invoke(12, $"Downloading {patchMpqName}...");
+                    await DownloadFileWithResumeAsync(http, patchMpqUrl, patchMpqPath, -1, ct);
+                }
 
                 byte[] patchMpqBytes = await File.ReadAllBytesAsync(patchMpqPath, ct);
                 var patchMpq = new MpqArchiveReader(patchMpqBytes);
@@ -486,17 +569,30 @@ namespace D3Downloader
             {
                 string fileDest = Path.Combine(targetDir, entry.RelativePath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar));
                 string fileUrl = $"{build.BaseDirectUrl}/{entry.RelativePath.Replace('\\', '/')}";
+                string localCached = TryResolveFromLocalArchive(localArchiveSource, entry.RelativePath, build);
 
                 tasks.Add(Task.Run(async () =>
                 {
                     await sem.WaitAsync(ct);
                     try
                     {
-                        await DownloadFileWithResumeAsync(http, fileUrl, fileDest, entry.Size, ct);
+                        if (localCached != null && File.Exists(localCached))
+                        {
+                            Directory.CreateDirectory(Path.GetDirectoryName(fileDest)!);
+                            if (!fileDest.Equals(localCached, StringComparison.OrdinalIgnoreCase))
+                            {
+                                File.Copy(localCached, fileDest, overwrite: true);
+                            }
+                        }
+                        else
+                        {
+                            await DownloadFileWithResumeAsync(http, fileUrl, fileDest, entry.Size, ct);
+                        }
                         long cur = Interlocked.Add(ref completedBytes, entry.Size);
                         double pct = 15.0 + (cur / (double)totalBytes) * 85.0;
                         string fn = Path.GetFileName(fileDest);
-                        onProgress?.Invoke(pct, $"[{pct:F1}%] Downloaded {fn} ({entry.Size / (1024.0 * 1024):F1} MB)");
+                        string srcTag = (localCached != null && File.Exists(localCached)) ? "[Archive]" : "[CDN]";
+                        onProgress?.Invoke(pct, $"[{pct:F1}%] {srcTag} {fn} ({entry.Size / (1024.0 * 1024):F1} MB)");
                     }
                     finally
                     {

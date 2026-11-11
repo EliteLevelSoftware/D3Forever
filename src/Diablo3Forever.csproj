@@ -15,9 +15,9 @@
     <AssemblyName>Diablo3Forever</AssemblyName>
     <Product>Diablo 3 Forever</Product>
     <AssemblyTitle>Diablo 3 Forever</AssemblyTitle>
-    <Version>1.3.0</Version>
-    <AssemblyVersion>1.3.0</AssemblyVersion>
-    <FileVersion>1.3.0</FileVersion>
+    <Version>1.4.0</Version>
+    <AssemblyVersion>1.4.0</AssemblyVersion>
+    <FileVersion>1.4.0</FileVersion>
     <ApplicationIcon>Assets\app_icon.ico</ApplicationIcon>
     <StartupObject>D3Downloader.Program</StartupObject>
   </PropertyGroup>

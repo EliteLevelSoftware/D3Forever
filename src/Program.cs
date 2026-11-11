@@ -130,6 +130,8 @@ namespace D3Downloader
                     string backupDest = args[++i];
                     BackupMode mode = BackupMode.FastBinaries;
                     BackupScope scope = BackupScope.All;
+                    BackupLocaleMode locMode = BackupLocaleMode.AllTextLocales;
+                    bool includeBase = false;
 
                     for (int j = i + 1; j < args.Length; j++)
                     {
@@ -138,6 +140,10 @@ namespace D3Downloader
                             string mStr = args[++j];
                             if (mStr.Equals("raw", StringComparison.OrdinalIgnoreCase) || mStr.Equals("cdn", StringComparison.OrdinalIgnoreCase))
                                 mode = BackupMode.RawCdnMirror;
+                            else if (mStr.Equals("both", StringComparison.OrdinalIgnoreCase) || mStr.Equals("all", StringComparison.OrdinalIgnoreCase))
+                                mode = BackupMode.Both;
+                            else if (mStr.Equals("fast", StringComparison.OrdinalIgnoreCase) || mStr.Equals("binaries", StringComparison.OrdinalIgnoreCase))
+                                mode = BackupMode.FastBinaries;
                         }
                         else if (args[j].Equals("--backup-scope", StringComparison.OrdinalIgnoreCase) && j + 1 < args.Length)
                         {
@@ -145,6 +151,17 @@ namespace D3Downloader
                             if (sStr.Equals("retail", StringComparison.OrdinalIgnoreCase)) scope = BackupScope.RetailOnly;
                             else if (sStr.Equals("ros", StringComparison.OrdinalIgnoreCase)) scope = BackupScope.ReaperOfSoulsOnly;
                             else if (sStr.Equals("vanilla", StringComparison.OrdinalIgnoreCase)) scope = BackupScope.VanillaOnly;
+                        }
+                        else if (args[j].Equals("--locale-mode", StringComparison.OrdinalIgnoreCase) && j + 1 < args.Length)
+                        {
+                            string lm = args[++j];
+                            if (lm.Equals("single", StringComparison.OrdinalIgnoreCase)) locMode = BackupLocaleMode.SingleLocale;
+                            else if (lm.Equals("all-text", StringComparison.OrdinalIgnoreCase) || lm.Equals("text", StringComparison.OrdinalIgnoreCase)) locMode = BackupLocaleMode.AllTextLocales;
+                            else if (lm.Equals("all-full", StringComparison.OrdinalIgnoreCase) || lm.Equals("full", StringComparison.OrdinalIgnoreCase)) locMode = BackupLocaleMode.AllLocalesFull;
+                        }
+                        else if (args[j].Equals("--include-base-assets", StringComparison.OrdinalIgnoreCase) || args[j].Equals("--include-base", StringComparison.OrdinalIgnoreCase))
+                        {
+                            includeBase = true;
                         }
                     }
 
@@ -163,8 +180,55 @@ namespace D3Downloader
                         mode: mode,
                         scope: scope,
                         locale: locale,
+                        localeMode: locMode,
+                        includeBaseAssets: includeBase,
                         onOverallProgress: (curr, tot, msg) => Console.WriteLine($"[OVERALL {curr}/{tot}] {msg}"),
                         onItemProgress: (pct, msg) => { },
+                        log: Console.WriteLine,
+                        ct: CancellationToken.None).GetAwaiter().GetResult();
+
+                    return ok ? 0 : 1;
+                }
+                else if (arg.Equals("--build-from-archive", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    string archiveSrc = args[++i];
+                    string targetFolder = @"C:\Games\Diablo III";
+                    int targetBuildNum = 16603;
+                    string targetLocale = "enUS";
+
+                    for (int j = i + 1; j < args.Length; j++)
+                    {
+                        if (args[j].Equals("--dest", StringComparison.OrdinalIgnoreCase) && j + 1 < args.Length)
+                            targetFolder = args[++j];
+                        else if (args[j].Equals("--build", StringComparison.OrdinalIgnoreCase) && j + 1 < args.Length && int.TryParse(args[++j], out int bn))
+                            targetBuildNum = bn;
+                        else if (args[j].Equals("--locale", StringComparison.OrdinalIgnoreCase) && j + 1 < args.Length)
+                            targetLocale = args[++j];
+                    }
+
+                    var b = D3BuildCatalog.AllBuilds.FirstOrDefault(x => x.BuildNumber == targetBuildNum)
+                        ?? D3BuildCatalog.AllBuilds.First();
+
+                    AttachConsole(-1);
+                    try
+                    {
+                        var stdOut = new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true };
+                        Console.SetOut(stdOut);
+                        var stdErr = new StreamWriter(Console.OpenStandardError()) { AutoFlush = true };
+                        Console.SetError(stdErr);
+                    }
+                    catch { }
+
+                    var ok = BackupEngine.BuildCompleteGameFromArchiveAsync(
+                        archiveSource: archiveSrc,
+                        destinationFolder: targetFolder,
+                        build: b,
+                        locale: targetLocale,
+                        localeMode: BackupLocaleMode.AllTextLocales,
+                        createShortcuts: true,
+                        configureFirewall: true,
+                        installPrereqs: true,
+                        onProgress: (pct, msg) => Console.WriteLine($"[{pct:F1}%] {msg}"),
                         log: Console.WriteLine,
                         ct: CancellationToken.None).GetAwaiter().GetResult();
 
@@ -275,7 +339,8 @@ namespace D3Downloader
             bool configureShortcutFirewall,
             Action<string> log,
             Action<double, string> onProgress = null,
-            CancellationToken ct = default)
+            CancellationToken ct = default,
+            string localArchiveSource = null)
         {
             log("========================================================================");
             log(" Diablo III Official Blizzard CDN Downloader & Multi-Version Builder");
@@ -284,6 +349,10 @@ namespace D3Downloader
             log($" Target Directory : {targetDir}");
             log($" Region / Locale  : {region} / {locale}");
             log($" Parallel Streams : {maxConcurrency}");
+            if (!string.IsNullOrWhiteSpace(localArchiveSource))
+            {
+                log($" Archive Cache    : {localArchiveSource}");
+            }
             if (dryRunLimit > 0)
             {
                 log($" Mode             : DRY-RUN (First {dryRunLimit} install + CASC files)");
@@ -333,7 +402,8 @@ namespace D3Downloader
                         maxConcurrency,
                         log,
                         onProgress,
-                        ct);
+                        ct,
+                        localArchiveSource);
 
                     if (configureShortcutFirewall)
                     {

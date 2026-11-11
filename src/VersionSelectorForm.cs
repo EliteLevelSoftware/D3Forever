@@ -1443,6 +1443,23 @@ namespace D3Downloader
             _cts = new CancellationTokenSource();
             try
             {
+                string localArchiveCandidate = null;
+                string[] potentialArchiveRoots = new[]
+                {
+                    @"S:\Game Backups\PC Games\Diablo3_Historical_Archive",
+                    @"D:\Diablo3_Historical_Archive",
+                    @"C:\Diablo3_Historical_Archive",
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Diablo3_Historical_Archive")
+                };
+                foreach (var p in potentialArchiveRoots)
+                {
+                    if (Directory.Exists(p))
+                    {
+                        localArchiveCandidate = p;
+                        break;
+                    }
+                }
+
                 int rc = await Task.Run(() => Program.ExecuteBuildPipelineAsync(
                     targetDir: targetDir,
                     selectedBuild: selectedBuild,
@@ -1455,7 +1472,8 @@ namespace D3Downloader
                     configureShortcutFirewall: _chkShortcutFirewall,
                     log: AppendLog,
                     onProgress: UpdateProgress,
-                    ct: _cts.Token));
+                    ct: _cts.Token,
+                    localArchiveSource: localArchiveCandidate));
 
                 if (rc == 0)
                 {
