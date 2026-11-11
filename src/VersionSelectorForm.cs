@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -48,6 +48,7 @@ namespace D3Downloader
         private bool _chkShortcutFirewall = true;
         private bool _chkPrereqs = false;
         private bool _chkVanillaBinariesOnly = false;
+        private bool _chkRosBinariesOnly = false;
 
         private bool _rosExpanded;
         private bool _vanillaExpanded;
@@ -105,8 +106,8 @@ namespace D3Downloader
 
         public VersionSelectorForm()
         {
-            _selectedRosBuild = D3BuildCatalog.AllBuilds.First(b => b.IsCasc); // 2.8.0.99920
-            _selectedVanillaBuild = D3BuildCatalog.AllBuilds.First(b => !b.IsCasc); // 1.0.8a.16603
+            _selectedRosBuild = D3BuildCatalog.AllBuilds.First(b => b.IsRoS); // 2.8.0.99920
+            _selectedVanillaBuild = D3BuildCatalog.AllBuilds.First(b => !b.IsRoS); // 1.0.8a.16603
 
             _logoImg = LoadEmbeddedImage("d3forever_logo.png");
             _rosBannerImg = LoadEmbeddedImage("ros_banner.jpg");
@@ -678,9 +679,9 @@ namespace D3Downloader
                     e.Graphics.FillRectangle(fadeBrush, fadeRect);
                 }
 
-                string badgeText = isRos ? "LIVE • DEFAULT NEWEST" : "CLASSIC • 18 BUILDS";
+                string badgeText = isRos ? "EXPANSION • 15 BUILDS" : "CLASSIC • 19 BUILDS";
                 Color badgeColor = isRos ? Color.FromArgb(91, 215, 43) : Color.FromArgb(245, 158, 11);
-                var badgeRect = new Rectangle(16, 12, isRos ? 142 : 128, 20);
+                var badgeRect = new Rectangle(16, 12, isRos ? 152 : 134, 20);
                 using (var bPath = CreateRoundRect(badgeRect, 3))
                 using (var bFill = new SolidBrush(badgeColor))
                 using (var bFont = new Font("Segoe UI", 7.5f, FontStyle.Bold))
@@ -692,8 +693,8 @@ namespace D3Downloader
 
                 bool isExp = isRos ? _rosExpanded : _vanillaExpanded;
                 string vmText = isExp
-                    ? (isRos ? "Hide 3 RoS Versions" : "Hide 18 Vanilla Versions")
-                    : (isRos ? "View More (Choose from 3 Versions)" : "View More (Choose from 18 Versions)");
+                    ? (isRos ? "Hide 15 RoS Versions" : "Hide 19 Vanilla Versions")
+                    : (isRos ? "View More (Choose from 15 Versions)" : "View More (Choose from 19 Versions)");
 
                 using (var vmPath = CreateRoundRect(viewMoreRect, 4))
                 using (var vmFill = new SolidBrush(hoverViewMore ? Color.FromArgb(230, 24, 34, 52) : Color.FromArgb(215, 12, 16, 26)))
@@ -821,14 +822,20 @@ namespace D3Downloader
 
         private Panel BuildRosDrawer()
         {
-            var rosBuilds = D3BuildCatalog.AllBuilds.Where(b => b.IsCasc).ToList();
+            var rosBuilds = D3BuildCatalog.AllBuilds.Where(b => b.IsRoS).ToList();
+            int rows = (int)Math.Ceiling(rosBuilds.Count / 3.0);
+            int drawerHeight = 50 + rows * 52 + 14;
+
             var drawer = new BufferedPanel
             {
                 Location = new Point(0, BANNER_HEIGHT),
-                Size = new Size(936, 108),
+                Size = new Size(936, drawerHeight),
                 BackColor = Color.FromArgb(11, 14, 22),
                 Visible = false
             };
+
+            var binToggleRect = new Rectangle(648, 12, 268, 22);
+
             drawer.Paint += (_, e) =>
             {
                 ConfigureGraphics(e.Graphics);
@@ -837,20 +844,41 @@ namespace D3Downloader
 
                 using var hdrFont = new Font("Segoe UI", 8.25f, FontStyle.Bold);
                 using var hdrBrush = new SolidBrush(Color.FromArgb(154, 166, 191));
-                e.Graphics.DrawString("SELECT REAPER OF SOULS BUILD (NGDP / TACT CDN — DEFAULTS TO 2.8.0.99920):", hdrFont, hdrBrush, 20, 14);
+                e.Graphics.DrawString("CHOOSE REAPER OF SOULS BUILD (15 BUILDS — MODERN CASC & 2014 MPQ EXPANSION):", hdrFont, hdrBrush, 20, 14);
+
+                DrawModernCheckBox(e.Graphics, binToggleRect.Location, _chkRosBinariesOnly,
+                    "Binaries Only (~35 MB Fast Patch)", Color.FromArgb(126, 231, 135));
+            };
+
+            drawer.MouseMove += (_, e) =>
+            {
+                drawer.Cursor = binToggleRect.Contains(e.Location) ? Cursors.Hand : Cursors.Default;
+            };
+            drawer.MouseClick += (_, e) =>
+            {
+                if (binToggleRect.Contains(e.Location))
+                {
+                    _chkRosBinariesOnly = !_chkRosBinariesOnly;
+                    drawer.Invalidate();
+                }
             };
 
             _rosVersionChips.Clear();
             int colWidth = 292;
+            int rowHeight = 46;
+
             for (int i = 0; i < rosBuilds.Count; i++)
             {
                 var item = rosBuilds[i];
-                string badge = i == 0 ? "NEWEST" : item.ProductCode.ToUpperInvariant();
+                int col = i % 3;
+                int row = i / 3;
+                string badge = i == 0 ? "LIVE" : (item.IsCasc ? item.ProductCode.ToUpperInvariant() : (item.BuildNumber == 20813 ? "BASE" : (item.Version == "Beta" ? "BETA" : "MPQ")));
+
                 var chip = CreateVersionChip(
                     item,
                     badge,
-                    new Point(20 + i * (colWidth + 9), 42),
-                    new Size(colWidth, 48),
+                    new Point(20 + col * (colWidth + 9), 42 + row * (rowHeight + 6)),
+                    new Size(colWidth, rowHeight),
                     isSelected: () => ReferenceEquals(item, _selectedRosBuild),
                     onClick: () =>
                     {
@@ -864,6 +892,7 @@ namespace D3Downloader
                         foreach (var c in _rosVersionChips) c.Invalidate();
                         _rosBannerPanel.Invalidate();
                     });
+
                 _rosVersionChips.Add(chip);
                 drawer.Controls.Add(chip);
             }
@@ -873,7 +902,7 @@ namespace D3Downloader
 
         private Panel BuildVanillaDrawer()
         {
-            var vanillaBuilds = D3BuildCatalog.AllBuilds.Where(b => !b.IsCasc).ToList();
+            var vanillaBuilds = D3BuildCatalog.AllBuilds.Where(b => !b.IsRoS).ToList();
             int rows = (int)Math.Ceiling(vanillaBuilds.Count / 3.0);
             int drawerHeight = 50 + rows * 52 + 14;
 
@@ -923,7 +952,7 @@ namespace D3Downloader
                 var item = vanillaBuilds[i];
                 int col = i % 3;
                 int row = i / 3;
-                string badge = i == 0 ? "NEWEST" : (item.BuildNumber == 8370 ? "BASE" : "MPQ");
+                string badge = i == 0 ? "NEWEST" : (item.BuildNumber == 8370 ? "BASE" : (item.Version == "Beta" ? "BETA" : "MPQ"));
 
                 var chip = CreateVersionChip(
                     item,
@@ -1082,22 +1111,10 @@ namespace D3Downloader
                     bool isOk = false;
                     try
                     {
-                        if (build.IsCasc)
-                        {
-                            string url = $"http://us.patch.battle.net:1119/{build.ProductCode}/versions";
-                            var req = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Head, url);
-                            var res = await _probeClient.SendAsync(req);
-                            isOk = res.IsSuccessStatusCode;
-                        }
-                        else
-                        {
-                            string url = build.BuildNumber == 8370
-                                ? $"{D3BuildCatalog.LegacyDirectBaseUrl}/Data_D3/PC/MPQs/base-Win.mpq"
-                                : $"{D3BuildCatalog.LegacyDirectBaseUrl}/Updates/d3-0-{build.BuildNumber}-Win-final.MPQ";
-                            var req = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Head, url);
-                            var res = await _probeClient.SendAsync(req);
-                            isOk = res.IsSuccessStatusCode;
-                        }
+                        string url = build.CheckUrl;
+                        var req = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Head, url);
+                        var res = await _probeClient.SendAsync(req);
+                        isOk = res.IsSuccessStatusCode;
                     }
                     catch
                     {
@@ -1168,6 +1185,22 @@ namespace D3Downloader
             _bottomPanel.Invalidate();
         }
 
+        public void CaptureSnapshot(string outPath, bool expandRos, bool expandVanilla)
+        {
+            if (expandRos && !_rosExpanded) ToggleRosDrawer();
+            if (expandVanilla && !_vanillaExpanded) ToggleVanillaDrawer();
+            ReflowTiles();
+            for (int i = 0; i < 20; i++)
+            {
+                Application.DoEvents();
+                System.Threading.Thread.Sleep(100);
+            }
+
+            using var bmp = new Bitmap(Width, Height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+            DrawToBitmap(bmp, new Rectangle(0, 0, Width, Height));
+            bmp.Save(outPath, System.Drawing.Imaging.ImageFormat.Png);
+        }
+
         private async Task StartTileInstallAsync(bool isRos)
         {
             D3BuildCatalogItem selectedBuild = isRos ? _selectedRosBuild : _selectedVanillaBuild;
@@ -1180,7 +1213,7 @@ namespace D3Downloader
             }
 
             string targetDir = Path.GetFullPath(_txtTargetLocation.Text.Trim());
-            bool binariesOnly = !isRos && _chkVanillaBinariesOnly;
+            bool binariesOnly = isRos ? _chkRosBinariesOnly : _chkVanillaBinariesOnly;
 
             _isInstalling = true;
             _rosBannerPanel.Invalidate();

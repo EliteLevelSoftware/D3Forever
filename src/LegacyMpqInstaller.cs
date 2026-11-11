@@ -18,46 +18,81 @@ namespace D3Downloader
         public string Version { get; init; }
         public int BuildNumber { get; init; }
         public bool IsCasc { get; init; }
+        public bool IsRoS { get; init; }
         public string ProductCode { get; init; } = "d3";
         public string ReleaseDate { get; init; }
         public string Summary { get; init; }
+        public string BaseDirectUrl { get; init; } = D3BuildCatalog.VanillaDirectBaseUrl;
+        public string MfilFileName { get; init; } = D3BuildCatalog.VanillaMfilFileName;
+        public int BaseBuildNumber { get; init; } = 8370;
+
+        public string CheckUrl => IsCasc
+            ? $"http://us.patch.battle.net:1119/{ProductCode}/versions"
+            : (BuildNumber > BaseBuildNumber
+                ? $"{BaseDirectUrl}/Updates/d3-0-{BuildNumber}-Win-final.MPQ"
+                : $"{BaseDirectUrl}/Data_D3/PC/MPQs/base-Win.mpq");
 
         public string DisplayTitle => IsCasc
             ? $"{Version}.{BuildNumber} — [CASC / {ProductCode} 64-bit] ({Summary})"
-            : $"{Version}.{BuildNumber} — [MPQ / Vanilla 32-bit] ({ReleaseDate} - {Summary})";
+            : (IsRoS
+                ? $"{Version}.{BuildNumber} — [RoS MPQ 32-bit] ({ReleaseDate} - {Summary})"
+                : $"{Version}.{BuildNumber} — [Vanilla MPQ 32-bit] ({ReleaseDate} - {Summary})");
 
         public override string ToString() => DisplayTitle;
     }
 
     public static class D3BuildCatalog
     {
-        public const string LegacyDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod-retail/NA/8370.direct";
-        public const string LegacyMfilFileName = "d3-16603-5A26B6C69DFDB16C25E1D05B0EEE83C2.mfil";
-        public const string LegacyMfilUrl = LegacyDirectBaseUrl + "/" + LegacyMfilFileName;
+        public const string VanillaDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod-retail/NA/8370.direct";
+        public const string VanillaMfilFileName = "d3-16603-5A26B6C69DFDB16C25E1D05B0EEE83C2.mfil";
+        public const string RosDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod-retail/NA/20813.direct";
+        public const string RosMfilFileName = "d3-28709-85F13E62259AEC63DC654C8F847A7CAF.mfil";
+        public const string RosBetaDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod/beta/00FC2DE9/NA/18962.direct";
+        public const string VanillaBetaDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod/20FB5BE9/NA/7162.direct";
 
         public static readonly IReadOnlyList<D3BuildCatalogItem> AllBuilds = new List<D3BuildCatalogItem>
         {
-            new() { Version = "2.8.0",  BuildNumber = 99920,  IsCasc = true,  ProductCode = "d3",   ReleaseDate = "Live Retail", Summary = "Global Live Reaper of Souls Client (d3)" },
-            new() { Version = "2.7.8",  BuildNumber = 96670,  IsCasc = true,  ProductCode = "d3t",  ReleaseDate = "PTR CDN",     Summary = "Patch 2.7.8 Public Test Realm Client (d3t)" },
-            new() { Version = "2.8.1",  BuildNumber = 101167, IsCasc = true,  ProductCode = "d3cn", ReleaseDate = "CN CDN",      Summary = "Patch 2.8.1 Reaper of Souls Client (d3cn)" },
-            new() { Version = "1.0.8a", BuildNumber = 16603,  IsCasc = false, ReleaseDate = "2013-05-10", Summary = "Final Vanilla 1.0.8 Hotfix Build" },
-            new() { Version = "1.0.8",  BuildNumber = 16416, IsCasc = false, ReleaseDate = "2013-05-07", Summary = "Monster Density & Co-op XP Bonus Patch" },
-            new() { Version = "1.0.7a", BuildNumber = 15295, IsCasc = false, ReleaseDate = "2013-02-15", Summary = "Duelling & Demon Hunter Hotfix" },
-            new() { Version = "1.0.7",  BuildNumber = 14633, IsCasc = false, ReleaseDate = "2013-02-12", Summary = "Brawling, Marquise Gems & BoA Crafting" },
-            new() { Version = "1.0.6a", BuildNumber = 13644, IsCasc = false, ReleaseDate = "2012-12-06", Summary = "Quest & Stability Patch" },
-            new() { Version = "1.0.6",  BuildNumber = 13300, IsCasc = false, ReleaseDate = "2012-11-27", Summary = "Network & Bugfix Patch" },
-            new() { Version = "1.0.5a", BuildNumber = 12811, IsCasc = false, ReleaseDate = "2012-10-25", Summary = "Crash & Achievement Fix Patch" },
-            new() { Version = "1.0.5",  BuildNumber = 12480, IsCasc = false, ReleaseDate = "2012-10-16", Summary = "Monster Power (MP1-10) & Infernal Machine" },
-            new() { Version = "1.0.4",  BuildNumber = 11327, IsCasc = false, ReleaseDate = "2012-08-21", Summary = "Paragon 1.0 (Levels 1-100) & Legendary Overhaul" },
-            new() { Version = "1.0.3b", BuildNumber = 10485, IsCasc = false, ReleaseDate = "2012-07-10", Summary = "Auction House & Stability Patch" },
-            new() { Version = "1.0.3a", BuildNumber = 10235, IsCasc = false, ReleaseDate = "2012-06-26", Summary = "Zombie Bears & General Bugfix Patch" },
-            new() { Version = "1.0.3",  BuildNumber = 10057, IsCasc = false, ReleaseDate = "2012-06-19", Summary = "Inferno Tuning, IAS Nerf & Repair Cost Patch" },
-            new() { Version = "1.0.2c", BuildNumber = 9991,  IsCasc = false, ReleaseDate = "2012-06-12", Summary = "Mac/PC Client Stability Patch" },
-            new() { Version = "1.0.2b", BuildNumber = 9950,  IsCasc = false, ReleaseDate = "2012-06-07", Summary = "Login & Auction House Responsiveness Patch" },
-            new() { Version = "1.0.2a", BuildNumber = 9858,  IsCasc = false, ReleaseDate = "2012-06-01", Summary = "Item & Skill Tooltip Fix Patch" },
-            new() { Version = "1.0.2",  BuildNumber = 9749,  IsCasc = false, ReleaseDate = "2012-05-29", Summary = "First Post-Launch Client Patch" },
-            new() { Version = "1.0.1",  BuildNumber = 9558,  IsCasc = false, ReleaseDate = "2012-05-15", Summary = "Original May 15, 2012 Launch Day Patch" },
-            new() { Version = "1.0.0",  BuildNumber = 8370,  IsCasc = false, ReleaseDate = "2012-05-14", Summary = "Original Unpatched DVD/Retail Base MPQ Build" }
+            // =========================================================================
+            // REAPER OF SOULS TILE (15 BUILDS)
+            // =========================================================================
+            new() { Version = "2.8.0",  BuildNumber = 99920,  IsCasc = true,  IsRoS = true,  ProductCode = "d3",   ReleaseDate = "Live Retail", Summary = "Global Live Retail Reaper of Souls Client (64-bit)" },
+            new() { Version = "2.7.8",  BuildNumber = 96670,  IsCasc = true,  IsRoS = true,  ProductCode = "d3t",  ReleaseDate = "PTR CDN",     Summary = "Patch 2.7.8 Public Test Realm Client (64-bit)" },
+            new() { Version = "2.8.1",  BuildNumber = 101167, IsCasc = true,  IsRoS = true,  ProductCode = "d3cn", ReleaseDate = "CN CDN",      Summary = "Patch 2.8.1 Reaper of Souls Client (64-bit)" },
+            new() { Version = "2.1.2",  BuildNumber = 28709,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = RosMfilFileName, ReleaseDate = "2015-01-13", Summary = "Patch 2.1.2 (Ancient Items, Conduit Pylon Rework)" },
+            new() { Version = "2.1.1",  BuildNumber = 27255,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-27255-35F65D5686569C9A188AC0264ED26583.mfil", ReleaseDate = "2014-09-23", Summary = "Patch 2.1.1 (Kadala Bloodshard Costs, Pet Toughness)" },
+            new() { Version = "2.1.0",  BuildNumber = 26451,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-26451-6032812D57D4CE684194552583B4275F.mfil", ReleaseDate = "2014-08-26", Summary = "Major Update (Greater Rifts, Legendary Gems, The Vault)" },
+            new() { Version = "2.0.6",  BuildNumber = 24641,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-24641-4D78C4B7698F7F79B3F5FD02049BF58C.mfil", ReleaseDate = "2014-06-10", Summary = "Patch 2.0.6 (Crafting Material Removal, Class Balancing)" },
+            new() { Version = "2.0.5a", BuildNumber = 24017,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-24017-19A8EF9C0CDE1BABCA831DA6EF2481B7.mfil", ReleaseDate = "2014-05-15", Summary = "Patch 2.0.5a Stability & Bugfix Hotfix" },
+            new() { Version = "2.0.5",  BuildNumber = 23920,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-23920-E2B432A14395F977F64B476003FF5BB8.mfil", ReleaseDate = "2014-05-13", Summary = "Patch 2.0.5 (Horadric Cache Torment Drop Rates, Gold Trade)" },
+            new() { Version = "2.0.4",  BuildNumber = 23119,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-23119-137D06EF773BC6F7BB015C088AAC8568.mfil", ReleaseDate = "2014-04-08", Summary = "Patch 2.0.4 (Crusader Wrath Fixes, Class Tweaks)" },
+            new() { Version = "2.0.3",  BuildNumber = 22427,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-22427-426C3AE6756462BF912686D1FE56CD22.mfil", ReleaseDate = "2014-03-11", Summary = "Patch 2.0.3 Bugfix & Stability Update" },
+            new() { Version = "2.0.2",  BuildNumber = 22274,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-22274-B7A49A3F2CDE04523DC09380EF88DF52.mfil", ReleaseDate = "2014-03-04", Summary = "Patch 2.0.2 Pre-Expansion Optimization Patch" },
+            new() { Version = "2.0.1",  BuildNumber = 22044,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-22044-0DD436E701850277986966F412FDC4B7.mfil", ReleaseDate = "2014-02-25", Summary = "Reaper of Souls Pre-Patch (Loot 2.0, Paragon 2.0)" },
+            new() { Version = "2.0.0",  BuildNumber = 20813,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-22044-0DD436E701850277986966F412FDC4B7.mfil", ReleaseDate = "2014-01-20", Summary = "Reaper of Souls Unpatched Retail Base MPQ Build" },
+            new() { Version = "Beta",   BuildNumber = 18962,  IsCasc = false, IsRoS = true,  BaseBuildNumber = 18962, BaseDirectUrl = RosBetaDirectBaseUrl, MfilFileName = "", ReleaseDate = "2013-11-20", Summary = "Original RoS Friends & Family Closed Beta Base Client" },
+
+            // =========================================================================
+            // VANILLA CLASSIC TILE (19 BUILDS)
+            // =========================================================================
+            new() { Version = "1.0.8a", BuildNumber = 16603,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2013-05-10", Summary = "Final Vanilla 1.0.8 Hotfix Build" },
+            new() { Version = "1.0.8",  BuildNumber = 16416,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2013-05-07", Summary = "Monster Density & Co-op XP Bonus Patch" },
+            new() { Version = "1.0.7a", BuildNumber = 15295,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2013-02-15", Summary = "Duelling & Demon Hunter Hotfix" },
+            new() { Version = "1.0.7",  BuildNumber = 14633,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2013-02-12", Summary = "Brawling, Marquise Gems & BoA Crafting" },
+            new() { Version = "1.0.6a", BuildNumber = 13644,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-12-06", Summary = "Quest & Stability Patch" },
+            new() { Version = "1.0.6",  BuildNumber = 13300,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-11-27", Summary = "Network & Bugfix Patch" },
+            new() { Version = "1.0.5a", BuildNumber = 12811,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-10-25", Summary = "Crash & Achievement Fix Patch" },
+            new() { Version = "1.0.5",  BuildNumber = 12480,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-10-16", Summary = "Monster Power (MP1-10) & Infernal Machine" },
+            new() { Version = "1.0.4",  BuildNumber = 11327,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-08-21", Summary = "Paragon 1.0 (Levels 1-100) & Legendary Overhaul" },
+            new() { Version = "1.0.3b", BuildNumber = 10485,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-07-10", Summary = "Auction House & Stability Patch" },
+            new() { Version = "1.0.3a", BuildNumber = 10235,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-06-26", Summary = "Zombie Bears & General Bugfix Patch" },
+            new() { Version = "1.0.3",  BuildNumber = 10057,  IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-06-19", Summary = "Inferno Tuning, IAS Nerf & Repair Cost Patch" },
+            new() { Version = "1.0.2c", BuildNumber = 9991,   IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-06-12", Summary = "Mac/PC Client Stability Patch" },
+            new() { Version = "1.0.2b", BuildNumber = 9950,   IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-06-07", Summary = "Login & Auction House Responsiveness Patch" },
+            new() { Version = "1.0.2a", BuildNumber = 9858,   IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-06-01", Summary = "Item & Skill Tooltip Fix Patch" },
+            new() { Version = "1.0.2",  BuildNumber = 9749,   IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-05-29", Summary = "First Post-Launch Client Patch" },
+            new() { Version = "1.0.1",  BuildNumber = 9558,   IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-05-15", Summary = "Original May 15, 2012 Launch Day Patch" },
+            new() { Version = "1.0.0",  BuildNumber = 8370,   IsCasc = false, IsRoS = false, BaseBuildNumber = 8370, BaseDirectUrl = VanillaDirectBaseUrl, MfilFileName = VanillaMfilFileName, ReleaseDate = "2012-05-14", Summary = "Original Unpatched DVD/Retail Base MPQ Build" },
+            new() { Version = "Beta",   BuildNumber = 7162,   IsCasc = false, IsRoS = false, BaseBuildNumber = 7162, BaseDirectUrl = VanillaBetaDirectBaseUrl, MfilFileName = "", ReleaseDate = "2011-09-20", Summary = "Original Vanilla Friends & Family Beta Client" }
         };
 
         public static D3BuildCatalogItem Resolve(string versionOrBuild)
@@ -156,28 +191,43 @@ namespace D3Downloader
             string mpqRoot = Path.Combine(targetDir, "Data_D3", "PC", "MPQs");
             Directory.CreateDirectory(mpqRoot);
 
-            log($"[1/4] Fetching Blizzard .mfil manifest from {D3BuildCatalog.LegacyMfilUrl}...");
-            onProgress?.Invoke(2, "Fetching Blizzard .mfil manifest...");
-            string mfilText = await http.GetStringAsync(D3BuildCatalog.LegacyMfilUrl, ct);
-            await File.WriteAllTextAsync(Path.Combine(targetDir, "Diablo III.mfil"), mfilText, Encoding.UTF8, ct);
-            await File.WriteAllTextAsync(Path.Combine(targetDir, D3BuildCatalog.LegacyMfilFileName), mfilText, Encoding.UTF8, ct);
+            List<MfilEntry> allMfilEntries = new();
+            if (!string.IsNullOrWhiteSpace(build.MfilFileName))
+            {
+                string mfilUrl = $"{build.BaseDirectUrl}/{build.MfilFileName}";
+                log($"[1/4] Fetching Blizzard .mfil manifest from {mfilUrl}...");
+                onProgress?.Invoke(2, "Fetching Blizzard .mfil manifest...");
+                try
+                {
+                    string mfilText = await http.GetStringAsync(mfilUrl, ct);
+                    await File.WriteAllTextAsync(Path.Combine(targetDir, "Diablo III.mfil"), mfilText, Encoding.UTF8, ct);
+                    await File.WriteAllTextAsync(Path.Combine(targetDir, build.MfilFileName), mfilText, Encoding.UTF8, ct);
+                    allMfilEntries = ParseMfil(mfilText);
+                    log($"      Parsed {allMfilEntries.Count} manifest entries across build archives.");
+                }
+                catch (Exception ex)
+                {
+                    log($"      Notice: Could not load .mfil directly ({ex.Message}), proceeding with direct binary extraction.");
+                }
+            }
+            else
+            {
+                log($"[1/4] Historical base beta archive: manifest not required for client binaries.");
+            }
             await File.WriteAllTextAsync(Path.Combine(targetDir, "Launcher.db"), locale, Encoding.ASCII, ct);
-
-            var allMfilEntries = ParseMfil(mfilText);
-            log($"      Parsed {allMfilEntries.Count} manifest entries across builds 8370..16603.");
 
             // Step 2: Download base-Win.mpq (always needed to extract & patch binaries)
             string baseWinMpqPath = Path.Combine(mpqRoot, "base-Win.mpq");
-            string baseWinUrl = $"{D3BuildCatalog.LegacyDirectBaseUrl}/Data_D3/PC/MPQs/base-Win.mpq";
-            log($"[2/4] Downloading base-Win.mpq (19.2 MB) from Blizzard CDN...");
+            string baseWinUrl = $"{build.BaseDirectUrl}/Data_D3/PC/MPQs/base-Win.mpq";
+            log($"[2/4] Downloading base-Win.mpq from Blizzard CDN ({build.BaseDirectUrl})...");
             onProgress?.Invoke(5, "Downloading base-Win.mpq...");
-            await DownloadFileWithResumeAsync(http, baseWinUrl, baseWinMpqPath, 19217193L, ct);
+            await DownloadFileWithResumeAsync(http, baseWinUrl, baseWinMpqPath, -1L, ct);
 
             byte[] baseWinBytes = await File.ReadAllBytesAsync(baseWinMpqPath, ct);
             var baseMpq = new MpqArchiveReader(baseWinBytes);
 
-            // Extract base 8370 binaries from base-Win.mpq
-            log($"      Extracting base 1.0.0.8370 binaries from base-Win.mpq...");
+            // Extract base binaries from base-Win.mpq
+            log($"      Extracting base {build.BaseBuildNumber} binaries from base-Win.mpq...");
             string[] baseFiles = baseMpq.GetListfileEntries();
             int extractedBase = 0;
             foreach (string relFile in baseFiles)
@@ -191,16 +241,16 @@ namespace D3Downloader
                 await File.WriteAllBytesAsync(destPath, data, ct);
                 extractedBase++;
             }
-            log($"      Extracted {extractedBase} base binaries (1.0.0.8370).");
+            log($"      Extracted {extractedBase} base binaries ({build.BaseBuildNumber}).");
 
-            // Step 3: If TargetBuild > 8370, download Updates/d3-0-{BuildNumber}-Win-final.MPQ and apply PTCH diffs
-            if (build.BuildNumber > 8370)
+            // Step 3: If TargetBuild > BaseBuildNumber, download Updates/d3-0-{BuildNumber}-Win-final.MPQ and apply diffs
+            if (build.BuildNumber > build.BaseBuildNumber)
             {
                 string patchMpqName = $"d3-0-{build.BuildNumber}-Win-final.MPQ";
                 string updatesDir = Path.Combine(targetDir, "Updates");
                 Directory.CreateDirectory(updatesDir);
                 string patchMpqPath = Path.Combine(updatesDir, patchMpqName);
-                string patchMpqUrl = $"{D3BuildCatalog.LegacyDirectBaseUrl}/Updates/{patchMpqName}";
+                string patchMpqUrl = $"{build.BaseDirectUrl}/Updates/{patchMpqName}";
 
                 log($"[3/4] Downloading binary diff archive Updates/{patchMpqName} for {build.Version}.{build.BuildNumber}...");
                 onProgress?.Invoke(12, $"Downloading {patchMpqName}...");
@@ -209,7 +259,7 @@ namespace D3Downloader
                 byte[] patchMpqBytes = await File.ReadAllBytesAsync(patchMpqPath, ct);
                 var patchMpq = new MpqArchiveReader(patchMpqBytes);
 
-                // Process delete.lst (removes obsoleted DLLs like msvcr90.dll/icudt44.dll on 1.0.5+ builds)
+                // Process delete.lst (removes obsoleted DLLs)
                 byte[] deleteLstBytes = patchMpq.ReadFile("delete.lst");
                 if (deleteLstBytes != null)
                 {
@@ -227,38 +277,82 @@ namespace D3Downloader
                     }
                 }
 
-                // Process patch.lst and apply PTCH (COPY / BSD0 BSDIFF40) to base-Win.mpq files
-                byte[] patchLstBytes = patchMpq.ReadFile("patch.lst")
-                    ?? throw new InvalidDataException($"patch.lst missing inside {patchMpqName}.");
-                string patchLstText = Encoding.UTF8.GetString(patchLstBytes);
                 using var md5 = MD5.Create();
-
+                byte[] patchLstBytes = patchMpq.ReadFile("patch.lst");
                 int patchedCount = 0;
-                foreach (string rawLine in patchLstText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+
+                if (patchLstBytes != null)
                 {
-                    string[] parts = rawLine.Trim().Split(';');
-                    if (parts.Length < 2) continue;
-                    string targetRelPath = parts[0].Trim();
-                    string patchArchiveEntry = parts[1].Trim();
-
-                    byte[] ptchData = patchMpq.ReadFile(patchArchiveEntry)
-                        ?? throw new FileNotFoundException($"Patch entry '{patchArchiveEntry}' not found in {patchMpqName}.");
-
-                    byte[] oldData = baseMpq.ReadFile(targetRelPath);
-                    byte[] newData = BlizzardPtchPatcher.ApplyPtch(oldData, ptchData, out string expectedMd5Hex);
-
-                    string actualMd5Hex = Convert.ToHexString(md5.ComputeHash(newData));
-                    if (!string.Equals(expectedMd5Hex, actualMd5Hex, StringComparison.OrdinalIgnoreCase))
+                    // Vanilla-style patch.lst mapping
+                    string patchLstText = Encoding.UTF8.GetString(patchLstBytes);
+                    foreach (string rawLine in patchLstText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                     {
-                        throw new InvalidDataException(
-                            $"MD5 mismatch after patching '{targetRelPath}': expected {expectedMd5Hex}, got {actualMd5Hex}.");
-                    }
+                        string[] parts = rawLine.Trim().Split(';');
+                        if (parts.Length < 2) continue;
+                        string targetRelPath = parts[0].Trim();
+                        string patchArchiveEntry = parts[1].Trim();
 
-                    string outPath = Path.Combine(targetDir, targetRelPath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar));
-                    Directory.CreateDirectory(Path.GetDirectoryName(outPath));
-                    await File.WriteAllBytesAsync(outPath, newData, ct);
-                    patchedCount++;
-                    log($"      [PTCH OK] {targetRelPath,-36} ({newData.Length / 1024.0,8:F1} KB | MD5: {actualMd5Hex.Substring(0, 12)}...)");
+                        byte[] ptchData = patchMpq.ReadFile(patchArchiveEntry)
+                            ?? throw new FileNotFoundException($"Patch entry '{patchArchiveEntry}' not found in {patchMpqName}.");
+
+                        byte[] oldData = baseMpq.ReadFile(targetRelPath);
+                        byte[] newData = BlizzardPtchPatcher.ApplyPtch(oldData, ptchData, out string expectedMd5Hex);
+
+                        string actualMd5Hex = Convert.ToHexString(md5.ComputeHash(newData));
+                        if (!string.Equals(expectedMd5Hex, actualMd5Hex, StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new InvalidDataException(
+                                $"MD5 mismatch after patching '{targetRelPath}': expected {expectedMd5Hex}, got {actualMd5Hex}.");
+                        }
+
+                        string outPath = Path.Combine(targetDir, targetRelPath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar));
+                        Directory.CreateDirectory(Path.GetDirectoryName(outPath));
+                        await File.WriteAllBytesAsync(outPath, newData, ct);
+                        patchedCount++;
+                        log($"      [PTCH OK] {targetRelPath,-36} ({newData.Length / 1024.0,8:F1} KB | MD5: {actualMd5Hex.Substring(0, 12)}...)");
+                    }
+                }
+                else
+                {
+                    // RoS-style direct MPQ_FILE_PATCH_FILE & replacement entries
+                    string[] patchEntries = patchMpq.GetListfileEntries();
+                    foreach (string entry in patchEntries)
+                    {
+                        if (entry.Equals("(listfile)", StringComparison.OrdinalIgnoreCase) ||
+                            entry.Equals("(attributes)", StringComparison.OrdinalIgnoreCase) ||
+                            entry.Equals("delete.lst", StringComparison.OrdinalIgnoreCase) ||
+                            entry.StartsWith("Updates\\", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        string outPath = Path.Combine(targetDir, entry.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar));
+                        Directory.CreateDirectory(Path.GetDirectoryName(outPath));
+
+                        if (patchMpq.IsPatchFile(entry))
+                        {
+                            byte[] ptchData = patchMpq.ReadFile(entry);
+                            byte[] oldData = baseMpq.ReadFile(entry);
+                            if (oldData != null && ptchData != null)
+                            {
+                                byte[] newData = BlizzardPtchPatcher.ApplyPtch(oldData, ptchData, out string expectedMd5Hex);
+                                string actualMd5Hex = Convert.ToHexString(md5.ComputeHash(newData));
+                                await File.WriteAllBytesAsync(outPath, newData, ct);
+                                patchedCount++;
+                                log($"      [PTCH OK] {entry,-36} ({newData.Length / 1024.0,8:F1} KB | MD5: {actualMd5Hex.Substring(0, 12)}...)");
+                            }
+                        }
+                        else
+                        {
+                            byte[] fileData = patchMpq.ReadFile(entry);
+                            if (fileData != null)
+                            {
+                                await File.WriteAllBytesAsync(outPath, fileData, ct);
+                                patchedCount++;
+                                log($"      [FILE OK] {entry,-36} ({fileData.Length / 1024.0,8:F1} KB)");
+                            }
+                        }
+                    }
                 }
 
                 // Extract locale InstallCD metadata if present in patch MPQ
@@ -277,126 +371,107 @@ namespace D3Downloader
                     }
                 }
 
-                log($"      Successfully patched and MD5-verified {patchedCount} binaries for Diablo III {build.Version}.{build.BuildNumber}!");
+                log($"      Successfully patched and verified {patchedCount} binaries for Diablo III {build.Version}.{build.BuildNumber}!");
             }
             else
             {
-                log($"[3/4] Target is base build 1.0.0.8370 — no binary diff patch required.");
+                log($"[3/4] Target is base build {build.BaseBuildNumber} — no binary diff patch required.");
             }
 
-            if (binariesOnly)
+            if (binariesOnly || allMfilEntries.Count == 0)
             {
                 onProgress?.Invoke(100, $"Binaries ready for {build.Version}.{build.BuildNumber}!");
                 log($"[4/4] Binaries-Only mode selected: skipping multi-GB Data_D3 MPQ archives.");
+                log("========================================================================");
+                log($" SUCCESS: Diablo III {build.Version}.{build.BuildNumber} binaries ready in {targetDir}");
+                log("========================================================================");
                 return;
             }
 
-            // Step 4: Filter & download Data_D3/PC/MPQs files up to build.BuildNumber
-            var mpqsToDownload = allMfilEntries
-                .Where(e => e.FileVersion <= build.BuildNumber)
-                .Where(e => !e.RelativePath.StartsWith("Updates/", StringComparison.OrdinalIgnoreCase))
-                .Where(e => !e.RelativePath.Equals("Data_D3/PC/MPQs/base-Win.mpq", StringComparison.OrdinalIgnoreCase))
-                .Where(e =>
-                    string.Equals(e.Tag, "base", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(e.Tag, "Win", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(e.Tag, locale, StringComparison.OrdinalIgnoreCase))
+            // Step 4: Full Production Client Mode: download multi-GB MPQs listed in .mfil
+            var targetEntries = allMfilEntries
+                .Where(e => (string.IsNullOrWhiteSpace(e.Tag) ||
+                             e.Tag.Equals("base", StringComparison.OrdinalIgnoreCase) ||
+                             e.Tag.Equals("Win", StringComparison.OrdinalIgnoreCase) ||
+                             e.Tag.Equals(locale, StringComparison.OrdinalIgnoreCase)) &&
+                            !e.RelativePath.EndsWith("base-Win.mpq", StringComparison.OrdinalIgnoreCase) &&
+                            !e.RelativePath.StartsWith("Updates", StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
-            long totalMpqBytes = mpqsToDownload.Sum(x => x.Size);
-            log($"[4/4] Downloading {mpqsToDownload.Count} Data_D3 MPQ archives for {build.Version}.{build.BuildNumber} ({totalMpqBytes / 1048576.0:F1} MB total)...");
+            long totalBytes = targetEntries.Sum(e => e.Size);
+            log($"[4/4] Downloading {targetEntries.Count} core MPQ archives ({totalBytes / (1024.0 * 1024 * 1024):F2} GB total)...");
 
-            using var sem = new SemaphoreSlim(Math.Clamp(maxConcurrency, 1, 16));
             long completedBytes = 0;
-            int completedFiles = 0;
-            var sw = Stopwatch.StartNew();
-            long lastLogTick = 0;
+            var sem = new SemaphoreSlim(maxConcurrency, maxConcurrency);
+            var tasks = new List<Task>();
 
-            var tasks = mpqsToDownload.Select(async item =>
+            foreach (var entry in targetEntries)
             {
-                await sem.WaitAsync(ct);
-                try
-                {
-                    string localPath = Path.Combine(targetDir, item.RelativePath.Replace('/', Path.DirectorySeparatorChar));
-                    Directory.CreateDirectory(Path.GetDirectoryName(localPath));
-                    string url = $"{D3BuildCatalog.LegacyDirectBaseUrl}/{item.RelativePath}";
+                string fileDest = Path.Combine(targetDir, entry.RelativePath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar));
+                string fileUrl = $"{build.BaseDirectUrl}/{entry.RelativePath.Replace('\\', '/')}";
 
-                    await DownloadFileWithResumeAsync(http, url, localPath, item.Size, ct, bytesDelta =>
+                tasks.Add(Task.Run(async () =>
+                {
+                    await sem.WaitAsync(ct);
+                    try
                     {
-                        long b = Interlocked.Add(ref completedBytes, bytesDelta);
-                        long now = sw.ElapsedMilliseconds;
-                        long prev = Interlocked.Read(ref lastLogTick);
-                        if (now - prev >= 1000 && Interlocked.CompareExchange(ref lastLogTick, now, prev) == prev)
-                        {
-                            double pct = totalMpqBytes > 0 ? (b * 100.0 / totalMpqBytes) : 100.0;
-                            double mbps = (b / 1048576.0) / Math.Max(0.1, sw.Elapsed.TotalSeconds);
-                            string msg = $"[MPQ] {pct,6:F2}% | {b / 1048576.0,8:F1} / {totalMpqBytes / 1048576.0,8:F1} MB | {completedFiles}/{mpqsToDownload.Count} files | {mbps,5:F1} MB/s";
-                            log("      " + msg);
-                            onProgress?.Invoke(15 + pct * 0.85, msg);
-                        }
-                    });
-
-                    int f = Interlocked.Increment(ref completedFiles);
-                    double finalPct = totalMpqBytes > 0 ? (Interlocked.Read(ref completedBytes) * 100.0 / totalMpqBytes) : 100.0;
-                    onProgress?.Invoke(15 + finalPct * 0.85, $"Downloaded {Path.GetFileName(item.RelativePath)} ({f}/{mpqsToDownload.Count})");
-                }
-                finally
-                {
-                    sem.Release();
-                }
-            });
+                        await DownloadFileWithResumeAsync(http, fileUrl, fileDest, entry.Size, ct);
+                        long cur = Interlocked.Add(ref completedBytes, entry.Size);
+                        double pct = 15.0 + (cur / (double)totalBytes) * 85.0;
+                        string fn = Path.GetFileName(fileDest);
+                        onProgress?.Invoke(pct, $"[{pct:F1}%] Downloaded {fn} ({entry.Size / (1024.0 * 1024):F1} MB)");
+                    }
+                    finally
+                    {
+                        sem.Release();
+                    }
+                }, ct));
+            }
 
             await Task.WhenAll(tasks);
-            onProgress?.Invoke(100, $"Diablo III {build.Version}.{build.BuildNumber} installation complete!");
+            onProgress?.Invoke(100, $"All files downloaded for {build.Version}.{build.BuildNumber}!");
+            log("========================================================================");
+            log($" SUCCESS: Full Diablo III {build.Version}.{build.BuildNumber} client successfully installed!");
+            log("========================================================================");
         }
 
         private static async Task DownloadFileWithResumeAsync(
             HttpClient http,
             string url,
-            string destinationPath,
+            string destPath,
             long expectedSize,
-            CancellationToken ct,
-            Action<long> onBytesProgress = null)
+            CancellationToken ct)
         {
-            if (File.Exists(destinationPath))
+            Directory.CreateDirectory(Path.GetDirectoryName(destPath));
+
+            long existingLength = 0;
+            if (File.Exists(destPath))
             {
-                long existingLen = new FileInfo(destinationPath).Length;
-                if (expectedSize > 0 && existingLen == expectedSize)
-                {
-                    onBytesProgress?.Invoke(expectedSize);
+                var fi = new FileInfo(destPath);
+                existingLength = fi.Length;
+                if (expectedSize > 0 && existingLength == expectedSize)
                     return;
-                }
             }
 
-            string tempPath = destinationPath + ".part";
-            for (int attempt = 0; attempt < 4; attempt++)
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            if (existingLength > 0)
             {
-                try
-                {
-                    using var req = new HttpRequestMessage(HttpMethod.Get, url);
-                    using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-                    resp.EnsureSuccessStatusCode();
-
-                    using var netStream = await resp.Content.ReadAsStreamAsync(ct);
-                    using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 262144, true))
-                    {
-                        byte[] buf = new byte[262144];
-                        int read;
-                        while ((read = await netStream.ReadAsync(buf, 0, buf.Length, ct)) > 0)
-                        {
-                            await fs.WriteAsync(buf, 0, read, ct);
-                            onBytesProgress?.Invoke(read);
-                        }
-                    }
-
-                    if (File.Exists(destinationPath)) File.Delete(destinationPath);
-                    File.Move(tempPath, destinationPath);
-                    return;
-                }
-                catch when (attempt < 3 && !ct.IsCancellationRequested)
-                {
-                    await Task.Delay(500 * (attempt + 1), ct);
-                }
+                req.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(existingLength, null);
             }
+
+            using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            if (resp.StatusCode == System.Net.HttpStatusCode.RequestedRangeNotSatisfiable)
+                return;
+
+            resp.EnsureSuccessStatusCode();
+
+            FileMode mode = (existingLength > 0 && resp.StatusCode == System.Net.HttpStatusCode.PartialContent)
+                ? FileMode.Append
+                : FileMode.Create;
+
+            await using var inStream = await resp.Content.ReadAsStreamAsync(ct);
+            await using var outStream = new FileStream(destPath, mode, FileAccess.Write, FileShare.None, 128 * 1024, useAsync: true);
+            await inStream.CopyToAsync(outStream, ct);
         }
     }
 
@@ -422,11 +497,11 @@ namespace D3Downloader
         }
 
         private readonly byte[] _archive;
-        private readonly int _sectorSize;
         private readonly int _hashPos;
         private readonly int _blockPos;
         private readonly int _hashCount;
         private readonly int _blockCount;
+        private readonly int _sectorSize;
 
         public MpqArchiveReader(byte[] archiveBytes)
         {
@@ -448,6 +523,26 @@ namespace D3Downloader
             if (lf == null) return Array.Empty<string>();
             return Encoding.UTF8.GetString(lf)
                 .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        }
+
+        public bool IsPatchFile(string fileName)
+        {
+            uint hA = HashString(fileName, 0x100);
+            uint hB = HashString(fileName, 0x200);
+            for (int i = 0; i < _hashCount; i++)
+            {
+                int hOff = _hashPos + i * 16;
+                uint eA = BinaryPrimitives.ReadUInt32LittleEndian(_archive.AsSpan(hOff, 4));
+                uint eB = BinaryPrimitives.ReadUInt32LittleEndian(_archive.AsSpan(hOff + 4, 4));
+                uint blk = BinaryPrimitives.ReadUInt32LittleEndian(_archive.AsSpan(hOff + 12, 4));
+                if (eA == hA && eB == hB && blk < (uint)_blockCount)
+                {
+                    int bOff = _blockPos + (int)blk * 16;
+                    uint flags = BinaryPrimitives.ReadUInt32LittleEndian(_archive.AsSpan(bOff + 12, 4));
+                    return (flags & 0x00100000u) != 0;
+                }
+            }
+            return false;
         }
 
         public byte[] ReadFile(string fileName)
@@ -479,6 +574,16 @@ namespace D3Downloader
             bool singleUnit = (flags & 0x01000000u) != 0;
             bool compressed = (flags & 0x00000200u) != 0;
             bool hasCrc = (flags & 0x04000000u) != 0;
+            bool isPatch = (flags & 0x00100000u) != 0;
+
+            if (isPatch)
+            {
+                uint patchHeaderLen = BinaryPrimitives.ReadUInt32LittleEndian(_archive.AsSpan(fPos, 4));
+                uint patchDataSize = BinaryPrimitives.ReadUInt32LittleEndian(_archive.AsSpan(fPos + 8, 4));
+                int dataPos = fPos + (int)patchHeaderLen;
+                int dataCSize = cSize - (int)patchHeaderLen;
+                return DecompressSector(_archive, dataPos, dataCSize, (int)patchDataSize);
+            }
 
             if (!compressed)
             {
@@ -583,153 +688,142 @@ namespace D3Downloader
 
             if (xfrmType == "BSD0")
             {
-                int rleUncompSize = BinaryPrimitives.ReadInt32LittleEndian(ptch.AsSpan(68, 4));
-                byte[] bsd = new byte[rleUncompSize];
-                int inPos = 72;
-                int outPos = 0;
-                while (outPos < rleUncompSize && inPos < ptch.Length)
-                {
-                    byte cmd = ptch[inPos++];
-                    if ((cmd & 0x80) != 0)
-                    {
-                        int count = (cmd & 0x7F) + 1;
-                        int copy = Math.Min(count, Math.Min(ptch.Length - inPos, rleUncompSize - outPos));
-                        Buffer.BlockCopy(ptch, inPos, bsd, outPos, copy);
-                        inPos += copy;
-                        outPos += copy;
-                    }
-                    else
-                    {
-                        outPos += Math.Min(cmd + 1, rleUncompSize - outPos);
-                    }
-                }
-
-                string bsdMagic = Encoding.ASCII.GetString(bsd, 0, 8);
-                if (bsdMagic != "BSDIFF40")
-                    throw new InvalidDataException($"Invalid BSDIFF40 magic '{bsdMagic}'.");
-
-                int ctrlBlockLen = BinaryPrimitives.ReadInt32LittleEndian(bsd.AsSpan(8, 4));
-                int diffBlockLen = BinaryPrimitives.ReadInt32LittleEndian(bsd.AsSpan(16, 4));
-                int newSize = BinaryPrimitives.ReadInt32LittleEndian(bsd.AsSpan(24, 4));
-
-                byte[] newData = new byte[newSize];
-                int ctrlPos = 32;
-                int ctrlEnd = 32 + ctrlBlockLen;
-                int diffPos = ctrlEnd;
-                int extraPos = ctrlEnd + diffBlockLen;
-                int oldPos = 0;
-                int newPos = 0;
-
-                while (newPos < newSize && ctrlPos < ctrlEnd)
-                {
-                    int addLen = ReadBsdiffInt32(bsd, ctrlPos);
-                    int copyLen = ReadBsdiffInt32(bsd, ctrlPos + 4);
-                    int seekLen = ReadBsdiffInt32(bsd, ctrlPos + 8);
-                    ctrlPos += 12;
-
-                    if (newPos + addLen > newSize) addLen = newSize - newPos;
-                    for (int i = 0; i < addLen; i++)
-                    {
-                        byte oldByte = (oldData != null && oldPos + i >= 0 && oldPos + i < oldData.Length)
-                            ? oldData[oldPos + i]
-                            : (byte)0;
-                        newData[newPos + i] = (byte)(oldByte + bsd[diffPos + i]);
-                    }
-                    diffPos += addLen;
-                    newPos += addLen;
-                    oldPos += addLen;
-
-                    if (newPos + copyLen > newSize) copyLen = newSize - newPos;
-                    if (copyLen > 0)
-                    {
-                        int safeCopy = Math.Min(copyLen, bsd.Length - extraPos);
-                        Buffer.BlockCopy(bsd, extraPos, newData, newPos, safeCopy);
-                        extraPos += copyLen;
-                        newPos += copyLen;
-                    }
-                    oldPos += seekLen;
-                }
-                return newData;
+                return ApplyBsd0(oldData, ptch.AsSpan(68).ToArray(), sizeAfter);
             }
 
-            throw new NotSupportedException($"Unsupported Blizzard PTCH XFRM type '{xfrmType}'.");
+            throw new NotSupportedException($"Unsupported PTCH transform '{xfrmType}'.");
         }
 
-        private static int ReadBsdiffInt32(byte[] buf, int offset)
+        private static byte[] ApplyBsd0(byte[] oldData, byte[] bsd0, int sizeAfter)
         {
-            uint u = BinaryPrimitives.ReadUInt32LittleEndian(buf.AsSpan(offset, 4));
-            return (u & 0x80000000u) != 0 ? -(int)(u & 0x7FFFFFFFu) : (int)u;
+            int controlLen = BinaryPrimitives.ReadInt32LittleEndian(bsd0.AsSpan(8, 4));
+            int diffLen = BinaryPrimitives.ReadInt32LittleEndian(bsd0.AsSpan(16, 4));
+            int newSize = BinaryPrimitives.ReadInt32LittleEndian(bsd0.AsSpan(24, 4));
+
+            byte[] controlBlock = DecompressBsd0Stream(bsd0, 32, controlLen);
+            byte[] diffBlock = DecompressBsd0Stream(bsd0, 32 + controlLen, diffLen);
+            byte[] extraBlock = DecompressBsd0Stream(bsd0, 32 + controlLen + diffLen, bsd0.Length - 32 - controlLen - diffLen);
+
+            byte[] newData = new byte[newSize];
+            int oldPos = 0;
+            int newPos = 0;
+            int ctrlPos = 0;
+            int diffPos = 0;
+            int extraPos = 0;
+
+            while (newPos < newSize && ctrlPos + 24 <= controlLen)
+            {
+                long addLen = BinaryPrimitives.ReadInt64LittleEndian(controlBlock.AsSpan(ctrlPos, 8));
+                long copyLen = BinaryPrimitives.ReadInt64LittleEndian(controlBlock.AsSpan(ctrlPos + 8, 8));
+                long seekDelta = BinaryPrimitives.ReadInt64LittleEndian(controlBlock.AsSpan(ctrlPos + 16, 8));
+                ctrlPos += 24;
+
+                for (int i = 0; i < addLen; i++)
+                {
+                    byte oldByte = (oldPos + i >= 0 && oldPos + i < oldData.Length) ? oldData[oldPos + i] : (byte)0;
+                    byte diffByte = diffPos < diffBlock.Length ? diffBlock[diffPos++] : (byte)0;
+                    newData[newPos + i] = (byte)(oldByte + diffByte);
+                }
+                newPos += (int)addLen;
+                oldPos += (int)addLen;
+
+                for (int i = 0; i < copyLen; i++)
+                {
+                    newData[newPos + i] = extraPos < extraBlock.Length ? extraBlock[extraPos++] : (byte)0;
+                }
+                newPos += (int)copyLen;
+                oldPos += (int)seekDelta;
+            }
+
+            return newData;
+        }
+
+        private static byte[] DecompressBsd0Stream(byte[] raw, int offset, int length)
+        {
+            if (length <= 0) return Array.Empty<byte>();
+            using var ms = new MemoryStream(raw, offset, length);
+            using var ds = new DeflateStream(ms, CompressionMode.Decompress);
+            using var outMs = new MemoryStream();
+            ds.CopyTo(outMs);
+            return outMs.ToArray();
         }
     }
 
     internal static class MpqLzmaDecoder
     {
-        public static byte[] Decompress(byte[] input, int offset, int length, int uncompressedSize)
+        public static byte[] Decompress(byte[] archive, int pos, int cSize, int uSize)
         {
-            byte prop0 = input[offset + 2];
-            int lc = prop0 % 9;
-            int rem = prop0 / 9;
-            int lp = rem % 5;
+            if (archive[pos] == 0x12)
+            {
+                pos += 2;
+                cSize -= 2;
+            }
+
+            byte prop = archive[pos];
+            int lc = prop % 9;
+            int rem = prop / 9;
             int pb = rem / 5;
-            long hdrSize = BinaryPrimitives.ReadInt64LittleEndian(input.AsSpan(offset + 7, 8));
-            int streamPos = (hdrSize == uncompressedSize) ? (offset + 15) : (offset + 7);
+            int lp = rem % 5;
+            int posStateMask = (1 << pb) - 1;
 
-            byte[] outBuf = new byte[uncompressedSize];
+            var rc = new RangeDecoder(archive, pos + 4);
+            var litProbs = InitProbs(0x300 << (lc + lp));
+            var isMatch = InitProbs(192);
+            var isRep = InitProbs(12);
+            var isRepG0 = InitProbs(12);
+            var isRepG1 = InitProbs(12);
+            var isRepG2 = InitProbs(12);
+            var isRep0Long = InitProbs(192);
+            var posSlotDecoder = new ushort[4][];
+            for (int i = 0; i < 4; i++) posSlotDecoder[i] = InitProbs(64);
+            var posDecoders = InitProbs(115);
+            var alignDecoder = InitProbs(16);
+
+            var lenDecoder = new LenDecoder(1 << pb);
+            var repLenDecoder = new LenDecoder(1 << pb);
+
+            byte[] outBuf = new byte[uSize];
             int outPos = 0;
-            int numPosStates = 1 << pb;
-            int numLiteralStates = 1 << (lc + lp);
-            int posStateMask = numPosStates - 1;
-            int lpMask = (1 << lp) - 1;
-
-            ushort[] isMatch = InitProbs(12 << pb);
-            ushort[] isRep = InitProbs(12);
-            ushort[] isRepG0 = InitProbs(12);
-            ushort[] isRepG1 = InitProbs(12);
-            ushort[] isRepG2 = InitProbs(12);
-            ushort[] isRep0Long = InitProbs(12 << pb);
-            ushort[] posSlotDecoder = InitProbs(4 * 64);
-            ushort[] posDecoders = InitProbs(115);
-            ushort[] posAlignDecoder = InitProbs(16);
-            ushort[] literals = InitProbs(0x300 * numLiteralStates);
-
-            var lenDecoder = new LenDecoder(numPosStates);
-            var repLenDecoder = new LenDecoder(numPosStates);
-            var rc = new RangeDecoder(input, streamPos);
             int state = 0;
             uint rep0 = 0, rep1 = 0, rep2 = 0, rep3 = 0;
-            byte prevByte = 0;
 
-            while (outPos < uncompressedSize)
+            while (outPos < uSize)
             {
                 int posState = outPos & posStateMask;
-                if (rc.DecodeBit(isMatch, (state << pb) + posState) == 0)
+                int matchProbIdx = (state << 4) + posState;
+
+                if (rc.DecodeBit(isMatch, matchProbIdx) == 0)
                 {
-                    int litState = ((outPos & lpMask) << lc) + (prevByte >> (8 - lc));
-                    int litBase = 0x300 * litState;
-                    int symbol = 1;
-                    if (state >= 7)
+                    byte prevByte = outPos > 0 ? outBuf[outPos - 1] : (byte)0;
+                    int litState = ((outPos & ((1 << lp) - 1)) << lc) + (prevByte >> (8 - lc));
+                    int litProbOffset = 0x300 * litState;
+
+                    int b = 1;
+                    if (state < 7)
                     {
-                        byte matchByte = outBuf[outPos - (int)rep0 - 1];
-                        do
-                        {
-                            int matchBit = (matchByte >> 7) & 1;
-                            matchByte <<= 1;
-                            int bit = rc.DecodeBit(literals, litBase + ((1 + matchBit) << 8) + symbol);
-                            symbol = (symbol << 1) | bit;
-                            if (matchBit != bit)
-                            {
-                                while (symbol < 0x100) symbol = (symbol << 1) | rc.DecodeBit(literals, litBase + symbol);
-                                break;
-                            }
-                        } while (symbol < 0x100);
+                        while (b < 0x100)
+                            b = (b << 1) | rc.DecodeBit(litProbs, litProbOffset + b);
                     }
                     else
                     {
-                        while (symbol < 0x100) symbol = (symbol << 1) | rc.DecodeBit(literals, litBase + symbol);
+                        byte matchByte = outBuf[outPos - (int)rep0 - 1];
+                        while (b < 0x100)
+                        {
+                            int matchBit = (matchByte >> 7) & 1;
+                            matchByte <<= 1;
+                            int bit = rc.DecodeBit(litProbs, litProbOffset + 0x100 + (matchBit << 8) + b);
+                            b = (b << 1) | bit;
+                            if (matchBit != bit)
+                            {
+                                while (b < 0x100)
+                                    b = (b << 1) | rc.DecodeBit(litProbs, litProbOffset + b);
+                                break;
+                            }
+                        }
                     }
-                    prevByte = (byte)symbol;
-                    outBuf[outPos++] = prevByte;
-                    state = (state < 4) ? 0 : ((state < 10) ? state - 3 : state - 6);
+
+                    outBuf[outPos++] = (byte)b;
+                    state = state < 4 ? 0 : (state < 10 ? state - 3 : state - 6);
                 }
                 else
                 {
@@ -738,22 +832,32 @@ namespace D3Downloader
                     {
                         if (rc.DecodeBit(isRepG0, state) == 0)
                         {
-                            if (rc.DecodeBit(isRep0Long, (state << pb) + posState) == 0)
+                            if (rc.DecodeBit(isRep0Long, matchProbIdx) == 0)
                             {
                                 state = state < 7 ? 9 : 11;
-                                prevByte = outBuf[outPos - (int)rep0 - 1];
-                                outBuf[outPos++] = prevByte;
+                                outBuf[outPos] = outBuf[outPos - (int)rep0 - 1];
+                                outPos++;
                                 continue;
                             }
                         }
                         else
                         {
                             uint dist;
-                            if (rc.DecodeBit(isRepG1, state) == 0) dist = rep1;
+                            if (rc.DecodeBit(isRepG1, state) == 0)
+                            {
+                                dist = rep1;
+                            }
                             else
                             {
-                                if (rc.DecodeBit(isRepG2, state) == 0) dist = rep2;
-                                else { dist = rep3; rep3 = rep2; }
+                                if (rc.DecodeBit(isRepG2, state) == 0)
+                                {
+                                    dist = rep2;
+                                }
+                                else
+                                {
+                                    dist = rep3;
+                                    rep3 = rep2;
+                                }
                                 rep2 = rep1;
                             }
                             rep1 = rep0;
@@ -764,39 +868,50 @@ namespace D3Downloader
                     }
                     else
                     {
-                        rep3 = rep2; rep2 = rep1; rep1 = rep0;
-                        len = lenDecoder.Decode(rc, posState) + 2;
+                        rep3 = rep2;
+                        rep2 = rep1;
+                        rep1 = rep0;
                         state = state < 7 ? 7 : 10;
-                        int lenToPosState = (len - 2 < 4) ? (len - 2) : 3;
-                        int posSlot = rc.DecodeBitTree(posSlotDecoder, lenToPosState * 64, 6);
+                        len = lenDecoder.Decode(rc, posState) + 2;
+
+                        int posSlot = rc.DecodeBitTree(posSlotDecoder[len < 6 ? len - 2 : 3], 0, 6);
                         if (posSlot >= 4)
                         {
                             int numDirectBits = (posSlot >> 1) - 1;
-                            rep0 = (uint)((2 | (posSlot & 1)) << numDirectBits);
-                            if (posSlot < 14) rep0 += (uint)rc.ReverseDecode(posDecoders, (int)rep0 - posSlot, numDirectBits);
+                            uint dist = (2 | ((uint)posSlot & 1)) << numDirectBits;
+                            if (posSlot < 14)
+                            {
+                                dist += (uint)rc.ReverseDecode(posDecoders, (int)(dist - (uint)posSlot - 1), numDirectBits);
+                            }
                             else
                             {
-                                rep0 += rc.DecodeDirectBits(numDirectBits - 4) << 4;
-                                rep0 += (uint)rc.ReverseDecode(posAlignDecoder, 0, 4);
+                                dist += (rc.DecodeDirectBits(numDirectBits - 4) << 4);
+                                dist += (uint)rc.ReverseDecode(alignDecoder, 0, 4);
                             }
+                            rep0 = dist;
                         }
-                        else rep0 = (uint)posSlot;
+                        else
+                        {
+                            rep0 = (uint)posSlot;
+                        }
                     }
-                    for (int i = 0; i < len && outPos < uncompressedSize; i++)
+
+                    for (int i = 0; i < len && outPos < uSize; i++)
                     {
-                        prevByte = outBuf[outPos - (int)rep0 - 1];
-                        outBuf[outPos++] = prevByte;
+                        outBuf[outPos] = outBuf[outPos - (int)rep0 - 1];
+                        outPos++;
                     }
                 }
             }
+
             return outBuf;
         }
 
         private static ushort[] InitProbs(int count)
         {
-            ushort[] p = new ushort[count];
-            for (int i = 0; i < count; i++) p[i] = 1024;
-            return p;
+            var arr = new ushort[count];
+            Array.Fill(arr, (ushort)1024);
+            return arr;
         }
 
         private sealed class RangeDecoder

@@ -1,9 +1,9 @@
 ﻿# Diablo 3 Forever
 
-**Diablo 3 Forever** is a standalone, zero-dependency open-source archival downloader and multi-version installer that streams and reconstructs **21 official Diablo III builds** (from the May 15, 2012 retail launch `1.0.0.8370` through `1.0.8a.16603` and modern 64-bit `Reaper of Souls` `2.8.x`) **100% directly from Blizzard's official CDN servers**.
+**Diablo 3 Forever** is a standalone, zero-dependency open-source archival downloader and multi-version installer that streams and reconstructs **34 official Diablo III builds** (from the early 2011 Vanilla Beta `Beta.7162`, the May 15, 2012 retail launch `1.0.0.8370`, the complete 2014 MPQ expansion era `2.0.0.20813`–`2.1.2.28709`, through modern 64-bit `Reaper of Souls` `2.8.x`) **100% directly from Blizzard's official CDN servers**.
 
 > ### **[Download `Diablo3Forever.exe` (Standalone Windows x64 - Zero Dependencies)](https://github.com/EliteLevelSoftware/D3Forever/raw/main/release/Diablo3Forever.exe)**
-> - **SHA-256:** `16d7223f672a3e15f6058871e237314b93ba52a8123b68842fc80c1b0f10f758` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
+> - **SHA-256:** `12a0eb154ea0e5b7d44a3f0d2fca3e0fae34fd6f2498d3cb9c8322d7bc34a3d3` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
 > - Or browse **[GitHub Releases](https://github.com/EliteLevelSoftware/D3Forever/releases)**
 
 ![Diablo 3 Forever Screenshot](docs/diablo3forever-preview.png)
@@ -13,24 +13,41 @@
 ## Key Features
 
 - **100% Direct from Official Blizzard CDNs:** Every byte is fetched directly from Blizzard's official distribution servers (`us.patch.battle.net`, `us.cdn.blizzard.com`, and `dist.blizzard.com.edgesuite.net`). Zero third-party game mirrors or redistributed game binaries are used.
-- **Dual-Pipeline Architecture (Modern NGDP/CASC + Legacy 2012-2013 MPQ/PTCH):**
-  - **Reaper of Souls (`2.7.8` / `2.8.0` / `2.8.1`):** Queries Blizzard's NGDP/TACT endpoints, downloads `BuildConfig`, `CDNConfig`, `encoding`, `root`, and `install` manifests, decodes BLTE (`N`, `Z`, `E`) streams, and builds a complete local CASC `Data/` container (`data.000`+, `.idx` index files, `shmem`, and `.build.info`).
-  - **Vanilla Classic (`1.0.0.8370` - `1.0.8a.16603`):** Parses the official `8370.direct` `.mfil` manifest, streams the cumulative base/locale MPQ archives (`Data_D3/PC/MPQs/`), extracts base binaries from `base-Win.mpq` (supporting both Zlib `0x02` and LZMA `0x12` MPQ sector compression), and applies Blizzard's `PTCH` (`BSD0`/`BSDIFF40` and `COPY`) binary diffs from `Updates/d3-0-{Build}-Win-final.MPQ` with full cryptographic MD5 verification.
-- **Fast "Binaries Only" Mode for Vanilla (`~35 MB`):** Need only the exact historical `Diablo III.exe` and DLLs for a specific Vanilla patch (`1.0.0`-`1.0.8a`)? Check **Binaries Only (~35 MB Fast Patch)** inside the Vanilla `View More` drawer to extract and binary-patch the executables in seconds without downloading the 15 GB MPQ asset archives.
+- **Real-Time Per-File CDN Availability Tracking:** Every single version chip displays an animated breathing status dot that probes Blizzard's CDN in real-time:
+  - 🟢 **OK:** Verified live and downloadable directly from Blizzard's Akamai/EdgeSuite edge nodes.
+  - 🟡 **CHECKING:** Background HTTP HEAD probe currently verifying file presence.
+  - 🔴 **OFFLINE:** Flagged if an archive or endpoint is unavailable.
+- **Dual-Pipeline Architecture (Modern NGDP/CASC + Historical MPQ/PTCH):**
+  - **Reaper of Souls CASC (`2.7.8` / `2.8.0` / `2.8.1`):** Queries Blizzard's NGDP/TACT endpoints, downloads `BuildConfig`, `CDNConfig`, `encoding`, `root`, and `install` manifests, decodes BLTE (`N`, `Z`, `E`) streams, and builds a complete local CASC `Data/` container (`data.000`+, `.idx` index files, `shmem`, and `.build.info`).
+  - **Reaper of Souls 2014 MPQ (`2.0.0.20813` – `2.1.2.28709`):** Full reverse-engineered support for Blizzard's 2014 MPQ patch architecture (`20813.direct`). Parses `Updates/d3-0-{Build}-Win-final.MPQ` archives featuring `MPQ_FILE_PATCH_FILE` (`0x00100000`) flags, strips the 28-byte `TPatchInfo` header, decompresses LZMA streams (`0x12`), and applies Blizzard's `PTCH` diff streams with bit-for-bit MD5 verification.
+  - **Vanilla Classic (`1.0.0.8370` – `1.0.8a.16603` & Beta):** Streams from `8370.direct` and `7162.direct`, extracts base binaries from `base-Win.mpq` (Zlib `0x02` and LZMA `0x12`), processes `delete.lst` and `patch.lst`, and executes cumulative `PTCH` (`BSD0`/`BSDIFF40` and `COPY`) diffs.
+- **Fast "Binaries Only" Mode (~35 MB Fast Patch):** Need only the exact historical `Diablo III.exe` and DLLs for a specific patch without downloading 15 GB of assets? Both Reaper of Souls and Vanilla drawers feature a **Binaries Only (~35 MB Fast Patch)** checkbox to extract, patch, and verify clean binaries in seconds.
 - **GUI + Headless CLI Support:** Run `Diablo3Forever.exe` with no arguments for the interactive GUI, or pass CLI flags for 100% silent, unattended deployment.
 
 ---
 
-## Supported Official CDN Builds (21 Versions)
+## Supported Official CDN Builds (34 Versions)
 
-### Reaper of Souls (NGDP / TACT CASC - 64-Bit)
-| Version | Build | Product Code | Description |
-| :--- | :--- | :--- | :--- |
-| **`2.8.0.99920`** | `99920` | `d3` | **Default Newest** - Global Live Reaper of Souls Client |
-| **`2.7.8.96670`** | `96670` | `d3t` | Patch 2.7.8 Public Test Realm (PTR) Client |
-| **`2.8.1.101167`** | `101167` | `d3cn` | Patch 2.8.1 Reaper of Souls Client |
+### Reaper of Souls (15 Builds — CASC 64-Bit & 2014 MPQ Expansion)
+| Version | Build | Format / Architecture | Release Date | Highlights |
+| :--- | :--- | :--- | :--- | :--- |
+| **`2.8.0.99920`** | `99920` | CASC 64-bit (`d3`) | Live Retail | **Default Newest** - Global Live Retail Reaper of Souls Client |
+| **`2.7.8.96670`** | `96670` | CASC 64-bit (`d3t`) | PTR CDN | Patch 2.7.8 Public Test Realm Client |
+| **`2.8.1.101167`** | `101167` | CASC 64-bit (`d3cn`)| CN CDN | Patch 2.8.1 Reaper of Souls Client |
+| **`2.1.2.28709`** | `28709` | MPQ 32-bit (`20813.direct`) | 2015-01-13 | Patch 2.1.2 (Ancient Items, Conduit Pylon Rework) |
+| **`2.1.1.27255`** | `27255` | MPQ 32-bit (`20813.direct`) | 2014-09-23 | Patch 2.1.1 (Kadala Bloodshard Costs, Pet Toughness) |
+| **`2.1.0.26451`** | `26451` | MPQ 32-bit (`20813.direct`) | 2014-08-26 | Major Update (Greater Rifts, Legendary Gems, The Vault) |
+| **`2.0.6.24641`** | `24641` | MPQ 32-bit (`20813.direct`) | 2014-06-10 | Patch 2.0.6 (Crafting Material Removal, Class Balancing) |
+| **`2.0.5a.24017`**| `24017` | MPQ 32-bit (`20813.direct`) | 2014-05-15 | Patch 2.0.5a Stability & Bugfix Hotfix |
+| **`2.0.5.23920`** | `23920` | MPQ 32-bit (`20813.direct`) | 2014-05-13 | Patch 2.0.5 (Horadric Cache Torment Drop Rates, Gold Trade) |
+| **`2.0.4.23119`** | `23119` | MPQ 32-bit (`20813.direct`) | 2014-04-08 | Patch 2.0.4 (Crusader Wrath Fixes, Class Tweaks) |
+| **`2.0.3.22427`** | `22427` | MPQ 32-bit (`20813.direct`) | 2014-03-11 | Patch 2.0.3 Bugfix & Stability Update |
+| **`2.0.2.22274`** | `22274` | MPQ 32-bit (`20813.direct`) | 2014-03-04 | Patch 2.0.2 Pre-Expansion Optimization Patch |
+| **`2.0.1.22044`** | `22044` | MPQ 32-bit (`20813.direct`) | 2014-02-25 | Reaper of Souls Pre-Patch (Loot 2.0, Paragon 2.0) |
+| **`2.0.0.20813`** | `20813` | MPQ 32-bit (`20813.direct`) | 2014-01-20 | Reaper of Souls Unpatched Retail Base MPQ Build |
+| **`Beta.18962`**  | `18962` | MPQ 32-bit (`18962.direct`) | 2013-11-20 | Original RoS Friends & Family Closed Beta Base Client |
 
-### Diablo III Vanilla (2012-2013 `.mfil` + MPQ + `PTCH`/`BSD0` - 32-Bit)
+### Diablo III Vanilla Classic (19 Builds — 2011 Beta & 2012-2013 MPQ Retail)
 | Version | Build | Release Date | Highlights |
 | :--- | :--- | :--- | :--- |
 | **`1.0.8a.16603`** | `16603` | `2013-05-10` | **Default Newest Vanilla** - Final Vanilla 1.0.8 Hotfix Build |
@@ -51,6 +68,7 @@
 | **`1.0.2.9749`** | `9749` | `2012-05-29` | First Post-Launch Client Patch |
 | **`1.0.1.9558`** | `9558` | `2012-05-15` | Original May 15, 2012 Launch Day Patch |
 | **`1.0.0.8370`** | `8370` | `2012-05-14` | Original Unpatched Retail DVD Base MPQ Build |
+| **`Beta.7162`**   | `7162` | `2011-09-20` | Original Vanilla Friends & Family Beta Client (`7162.direct`) |
 
 ---
 
@@ -60,17 +78,20 @@
 # Launch the interactive GUI (default when no flags are passed)
 Diablo3Forever.exe
 
-# List all 21 official CDN builds and exit
-Diablo3Forever.exe --list-builds
+# List all 34 official CDN builds and exit
+Diablo3Forever.exe --list-versions
 
 # Install the newest Live Reaper of Souls (2.8.0.99920) silently
-Diablo3Forever.exe "C:\Games\Diablo III" --build 2.8.0 --locale enUS --all-in-one
+Diablo3Forever.exe "C:\Games\Diablo III" --build 2.8.0 --locale enUS
 
 # Install full playable Vanilla 1.0.8a (Build 16603)
 Diablo3Forever.exe "C:\Games\Diablo III Vanilla" --build 16603 --locale enUS
 
 # Fast-build ONLY the patched Vanilla binaries (~35 MB download) for 1.0.3 (Build 10057)
 Diablo3Forever.exe "C:\Games\D3-1.0.3-Binaries" --build 10057 --binaries-only
+
+# Fast-build ONLY the 2014 Reaper of Souls 2.0.1 binaries (~35 MB download)
+Diablo3Forever.exe "C:\Games\D3-2.0.1-Binaries" --build 22044 --binaries-only
 ```
 
 ---
@@ -80,7 +101,7 @@ Diablo3Forever.exe "C:\Games\D3-1.0.3-Binaries" --build 10057 --binaries-only
 Requires the [.NET 8.0+ / 10.0 SDK](https://dotnet.microsoft.com/download) on Windows:
 
 ```powershell
-dotnet publish src/Diablo3Forever.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish
+dotnet publish src/Diablo3Forever.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o release
 ```
 
 ---

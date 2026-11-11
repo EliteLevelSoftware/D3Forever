@@ -61,6 +61,26 @@ namespace D3Downloader
                 {
                     listVersions = true;
                 }
+                else if (arg.Equals("--snapshot-ros", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    string outSnap = args[++i];
+                    System.Windows.Forms.Application.EnableVisualStyles();
+                    System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+                    using var f = new VersionSelectorForm();
+                    f.Show();
+                    f.CaptureSnapshot(outSnap, expandRos: true, expandVanilla: false);
+                    return 0;
+                }
+                else if (arg.Equals("--snapshot-vanilla", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    string outSnap = args[++i];
+                    System.Windows.Forms.Application.EnableVisualStyles();
+                    System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+                    using var f = new VersionSelectorForm();
+                    f.Show();
+                    f.CaptureSnapshot(outSnap, expandRos: false, expandVanilla: true);
+                    return 0;
+                }
                 else if ((arg.Equals("--version", StringComparison.OrdinalIgnoreCase) || arg.Equals("--build", StringComparison.OrdinalIgnoreCase)) && i + 1 < args.Length)
                 {
                     versionArg = args[++i];
@@ -121,24 +141,33 @@ namespace D3Downloader
             }
 
             AttachConsole(-1);
+            try
+            {
+                var stdOut = new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true };
+                Console.SetOut(stdOut);
+                var stdErr = new StreamWriter(Console.OpenStandardError()) { AutoFlush = true };
+                Console.SetError(stdErr);
+            }
+            catch { }
 
             if (listVersions)
             {
-                Console.WriteLine("==========================================================================================");
-                Console.WriteLine(" Available Official Blizzard CDN Diablo III Builds (--version <Version or BuildNumber>)");
-                Console.WriteLine("==========================================================================================");
+                Console.WriteLine("==========================================================================================================");
+                Console.WriteLine(" Available Official Blizzard CDN Diablo III Builds (34 Total Supported Builds)");
+                Console.WriteLine("==========================================================================================================");
                 foreach (var b in D3BuildCatalog.AllBuilds)
                 {
-                    Console.WriteLine($"  {b.Version,-8} | Build {b.BuildNumber,-6} | {(b.IsCasc ? "NGDP/CASC" : "MPQ/PTCH "),-9} | {b.ReleaseDate,-10} | {b.Summary}");
+                    string edition = b.IsRoS ? "Reaper of Souls" : "Vanilla Classic";
+                    Console.WriteLine($"  {b.Version,-8} | Build {b.BuildNumber,-6} | {(b.IsCasc ? "CASC 64-bit" : "MPQ  32-bit"),-11} | {edition,-16} | {b.ReleaseDate,-10} | {b.Summary}");
                 }
-                Console.WriteLine("==========================================================================================");
+                Console.WriteLine("==========================================================================================================");
                 return 0;
             }
 
             var resolvedBuild = D3BuildCatalog.Resolve(versionArg);
             if (resolvedBuild == null)
             {
-                Console.Error.WriteLine($"[ERROR] Unknown version or build '{versionArg}'. Run with --list-versions to see all 19 supported builds.");
+                Console.Error.WriteLine($"[ERROR] Unknown version or build '{versionArg}'. Run with --list-versions to see all 34 supported builds.");
                 return 1;
             }
 

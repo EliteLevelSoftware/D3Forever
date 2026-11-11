@@ -12,6 +12,7 @@ publish*/
 
 # Keep release/Diablo3Forever.exe and release/SHA256SUMS.txt in the repo, ignore duplicate zip in git tree
 release/*.zip
+*.pdb
 
 # Visual Studio / Rider / VS Code user files
 .vs/
