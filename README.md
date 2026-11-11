@@ -2,6 +2,10 @@
 
 **Diablo 3 Forever** is a standalone, zero-dependency open-source archival downloader and multi-version installer that streams and reconstructs **21 official Diablo III builds** (from the May 15, 2012 retail launch `1.0.0.8370` through `1.0.8a.16603` and modern 64-bit `Reaper of Souls` `2.8.x`) **100% directly from Blizzard's official CDN servers**.
 
+> ### **[⬇ Download `Diablo3Forever.exe` (Standalone Windows x64 — Zero Dependencies)](https://github.com/EliteLevelSoftware/D3Forever/raw/main/release/Diablo3Forever.exe)**
+> - **SHA-256:** `dc1ad0389da9a33dfc0599bdd5606dab549ae557c8ca0c12c2cc8feb63e1e7c7` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
+> - Or browse **[GitHub Releases](https://github.com/EliteLevelSoftware/D3Forever/releases)**
+
 ![Diablo 3 Forever Screenshot](docs/screenshot.png)
 
 ---
