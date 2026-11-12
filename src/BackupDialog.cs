@@ -112,7 +112,7 @@ namespace D3Downloader
                 using var titleFont = new Font("Segoe UI", 11.5f, FontStyle.Bold);
                 using var subFont = new Font("Segoe UI", 8.25f, FontStyle.Regular);
                 e.Graphics.DrawString("BULK ARCHIVAL & OFFLINE GAME BUILDER", titleFont, Brushes.White, bx + 28, 14);
-                e.Graphics.DrawString("Preserve all 91 historical versions, mirror Blizzard CDN files, and assemble playable offline games.",
+                e.Graphics.DrawString($"Preserve all {D3BuildCatalog.AllBuilds.Count} historical versions, mirror Blizzard CDN files, and assemble playable offline games.",
                     subFont, new SolidBrush(Color.FromArgb(148, 163, 184)), bx + 28, 38);
 
                 using var pen = new Pen(Color.FromArgb(36, 45, 66), 1f);
@@ -400,10 +400,10 @@ namespace D3Downloader
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 8.5f)
             };
-            _cbScope.Items.Add("All 91 Builds (Full Catalog)");
-            _cbScope.Items.Add("Retail Releases Only (38 Builds)");
-            _cbScope.Items.Add("Reaper of Souls Only (41 Builds)");
-            _cbScope.Items.Add("Vanilla Classic Only (50 Builds)");
+            _cbScope.Items.Add($"All {D3BuildCatalog.AllBuilds.Count} Builds (Full Catalog)");
+            _cbScope.Items.Add($"Retail Releases Only ({D3BuildCatalog.AllBuilds.Count(b => b.Category == D3BuildCategory.Retail)} Builds)");
+            _cbScope.Items.Add($"Reaper of Souls Only ({D3BuildCatalog.AllBuilds.Count(b => b.IsRoS)} Builds)");
+            _cbScope.Items.Add($"Vanilla Classic Only ({D3BuildCatalog.AllBuilds.Count(b => !b.IsRoS)} Builds)");
             _cbScope.SelectedIndex = 0;
             _cbScope.SelectedIndexChanged += (_, _) => TriggerInventoryScan();
             _pnlTabBackup.Controls.Add(_cbScope);

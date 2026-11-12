@@ -19,11 +19,11 @@
 
 ---
 
-**Diablo 3 Forever** (v1.4.2) is a standalone, zero-dependency open-source archival downloader and multi-version installer that streams, reconstructs, and archives **91 official Diablo III builds** (spanning retail releases, Public Test Realm PTR iterations, and closed/open beta milestone clients from 2011 to 2025) **100% directly from Blizzard's official CDN servers**.
+**Diablo 3 Forever** (v1.4.2) is a standalone, zero-dependency open-source archival downloader and multi-version installer that streams, reconstructs, and archives **93 official Diablo III builds** (spanning retail releases, Public Test Realm PTR iterations, and closed/open beta milestone clients from 2011 to 2025) **100% directly from Blizzard's official CDN servers**.
 
 > ### **[Download `Diablo3Forever.exe` v1.4.2 (Standalone Windows x64 - Zero Dependencies)](https://github.com/EliteLevelSoftware/D3Forever/releases/download/v1.4.2/Diablo3Forever.exe)**
 > - **Version:** `v1.4.2`
-> - **SHA-256:** `46309a824a0d897007c1edbae7ded59ce7b8bf5c40608a8fb548d0b8be6c177a` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
+> - **SHA-256:** `5c62ef6fb8fb453906d86363c0d5247d6ba9056c86e58869479812089466afa2` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
 > - **Build Catalog & Provenance Tracker:** [`docs/Diablo3_Versions_Tracker_Enriched.xlsx`](docs/Diablo3_Versions_Tracker_Enriched.xlsx)
 > - Or browse **[GitHub Releases](https://github.com/EliteLevelSoftware/D3Forever/releases)**
 
@@ -39,12 +39,13 @@
 > ### 🔍 Blizzard CDN Reality: Legacy MPQ vs. Live CASC vs. Historical CASC
 > - **🟢 83 Legacy MPQ Builds (100% Live CDN Download):** Every single Vanilla milestone (Friends & Family Beta `7162` through Patch `1.0.8a`) and Reaper of Souls MPQ build (`2.0.0` through `2.1.2`) remains **100% intact and actively hosted** across Blizzard's Akamai/EdgeSuite CDN servers. Full clients and binaries download directly in seconds with zero external dependencies.
 > - **🟢 Live Retail CASC (100% Live CDN Download):** Current retail builds (`2.8.0.99920` and China `2.8.1.101167`) are live and streamable directly from Blizzard's NGDP infrastructure.
-> - **🟡 Historical CASC Builds (2.7.3 – 2.7.8 / Amber `ARCHIVE` Badge):** Blizzard retains all official manifest configurations (`BuildConfig`, `CDNConfig`, `install`, `encoding`) indefinitely. However, Blizzard has purged the unique raw payload chunks for these retired patches from their live CDN (`tpr/diablo3/data/` returns HTTP 404). In the UI, these builds are badged with an amber **`ARCHIVE`** pill. They can be installed by pointing Diablo 3 Forever to a local backup/archive folder, or assembled using the built-in Offline Client Assembler.
+> - **🟢 Patch 2.7.4.84161 (100% Live CDN Download - Server Standard):** All standalone executables (`Diablo III64.exe`, `Diablo III.exe`), DLLs, and 17.37 GB of shared CASC game assets stream directly from live Blizzard CDN edge nodes with bit-for-bit MD5 CKey cryptographic verification. No external files required.
+> - **⚡ Historical CASC Builds (2.6.4 – 2.7.8 / Hybrid CASC Pipeline):** Manifest configurations (`BuildConfig`, `CDNConfig`, `install`, `encoding`) and all 17.37 GB of shared archive assets remain active on Blizzard's CDN. Diablo 3 Forever automatically federates shared CASC archives and uses the Option B Clean Binary Package system to recover patch binaries without fragile diffing.
 
-- **Bulk Archival & Cold Storage Backup Engine:** Backup and preserve the entire 91-build catalog to an external hard drive, USB storage, or network share (NAS):
+- **Bulk Archival & Cold Storage Backup Engine:** Backup and preserve the entire 93-build catalog to an external hard drive, USB storage, or network share (NAS):
   - **Live Destination Inventory Tracker:** Automatically inspects the destination drive in real time, displaying present vs. needed builds and guaranteeing 100% incremental resume (already verified files are never re-downloaded).
   - **Dual-Mode Archival:** Download Fast Binaries AND the Raw Blizzard CDN Mirror at the same time via dual checkboxes.
-  - **⚡ Fast Binaries Archive (~3.2 GB Total):** Reconstructs standalone ready-to-run executables (`Diablo III.exe`), DLLs, and multi-locale launch scripts for all 91 builds.
+  - **⚡ Fast Binaries Archive (~3.3 GB Total):** Reconstructs standalone ready-to-run executables (`Diablo III.exe`), DLLs, and multi-locale launch scripts for all 93 builds.
   - **📦 Raw Blizzard CDN Mirror:** Mirrors original unpatched Base MPQ archives, all 85 historical patch MPQs (`Updates/d3-0-*.MPQ`), and manifests for 100% offline cold storage.
   - **Universal Multi-Language Pack (+~400 MB):** Includes translated text for ALL 13 official languages (`enUS`, `deDE`, `frFR`, `esES`, `ruRU`, `koKR`, `zhTW`, etc.) allowing any build to be launched in any language worldwide while saving over 32 GB of duplicate audio!
   - **Offline Complete Game Assembler:** Assemble any historical build into a complete, 100% playable game client directly from your offline archive with ZERO internet connection required.
@@ -65,14 +66,15 @@
 # Interactive GUI
 .\Diablo3Forever.exe
 
-# List all 91 official Blizzard CDN builds with release dates and provenance
+# List all 93 official Blizzard CDN builds with release dates and provenance
 .\Diablo3Forever.exe --list-versions
 
 # Install a specific historical build directly from Blizzard CDN
 .\Diablo3Forever.exe --build 16603 "C:\Games\Diablo III 1.0.8a"
 .\Diablo3Forever.exe --version "2.1.2" "C:\Games\Diablo III 2.1.2" --binaries-only
+.\Diablo3Forever.exe --build 84161 "C:\Games\Diablo III 2.7.4" --binaries-only
 
-# Bulk Backup all 91 builds to external storage or NAS (Fast Binaries Mode ~3.2 GB)
+# Bulk Backup all 93 builds to external storage or NAS (Fast Binaries Mode ~3.3 GB)
 .\Diablo3Forever.exe --backup-all "E:\Diablo3_Historical_Archive" --backup-mode binaries --backup-scope all
 
 # Complete Raw Blizzard CDN Offline Mirror (~48 GB)
@@ -81,22 +83,25 @@
 
 ---
 
-## Supported Official CDN Builds (91 Versions)
+## Supported Official CDN Builds (93 Versions)
 
-### Reaper of Souls (41 Builds Across Retail, PTR & Beta)
+### Reaper of Souls (43 Builds Across Retail, PTR & Beta)
 
-#### Retail Releases (19 Builds)
+#### Retail Releases (22 Builds)
 
 | Version | Build | Architecture | Availability | Release Date | Summary / Highlights |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`2.8.0`** | `99920` | CASC 64-bit | 🟢 Live CDN | Live Retail | Global Live Retail Client (64-bit CASC) |
 | **`2.8.1`** | `101167` | CASC 64-bit | 🟢 Live CDN | CN CDN | Patch 2.8.1 Production Client (64-bit CASC) |
-| **`2.7.8`** | `97927` | CASC 64-bit | 🟡 Offline Archive | 2024-09-10 | Patch 2.7.8 Post-Loc Production Build |
-| **`2.7.7`** | `93903` | CASC 64-bit | 🟡 Offline Archive | 2024-02-06 | Patch 2.7.7a Production Release Candidate 2 |
-| **`2.7.7`** | `92326` | CASC 64-bit | 🟡 Offline Archive | 2024-01-09 | Patch 2.7.7 Production Release Candidate 1 |
-| **`2.7.6`** | `91007` | CASC 64-bit | 🟡 Offline Archive | 2023-09-12 | Patch 2.7.6 Solo Self-Found Update (64-bit CASC) |
-| **`2.7.4`** | `84161` | CASC 64-bit | 🟡 Offline Archive | 2022-08-23 | Patch 2.7.4 Angelic Crucibles Update (64-bit CASC) |
-| **`2.7.3`** | `82785` | CASC 64-bit | 🟡 Offline Archive | 2022-04-12 | Patch 2.7.3 Echoing Nightmare Client (64-bit CASC) |
+| **`2.7.8`** | `97927` | CASC 64-bit | ⚡ Hybrid CASC | 2024-09-10 | Patch 2.7.8 Post-Loc Production Build (Option B Delta) |
+| **`2.7.7`** | `93903` | CASC 64-bit | ⚡ Hybrid CASC | 2024-02-06 | Patch 2.7.7a Production Release Candidate 2 (Option B Delta) |
+| **`2.7.7`** | `92326` | CASC 64-bit | ⚡ Hybrid CASC | 2024-01-09 | Patch 2.7.7 Production Release Candidate 1 (Option B Delta) |
+| **`2.7.6`** | `91007` | CASC 64-bit | ⚡ Hybrid CASC | 2023-09-12 | Patch 2.7.6 Solo Self-Found Update (Option B Delta) |
+| **`2.7.4`** | `84161` | CASC 64-bit | 🟢 Live CDN | 2022-08-23 | Patch 2.7.4 Angelic Crucibles (Live CDN + Server Standard) |
+| **`2.7.3`** | `82785` | CASC 64-bit | ⚡ Hybrid CASC | 2022-04-12 | Patch 2.7.3 Echoing Nightmare Client (Option B Delta) |
+| **`2.6.10`** | `71254` | CASC 64-bit | ⚡ Hybrid CASC | 2020-11-10 | Patch 2.6.10 Shadow Clones (Option B Delta) |
+| **`2.6.9`** | `68722` | CASC 64-bit | ⚡ Hybrid CASC | 2020-06-23 | Patch 2.6.9 Trials of Tempests (Option B Delta) |
+| **`2.6.4`** | `55430` | CASC 64-bit | ⚡ Hybrid CASC | 2019-01-15 | Patch 2.6.4 Season of Grandeur (Option B Delta) |
 | **`2.1.2`** | `28709` | MPQ 32-bit | 🟢 Live CDN | 2015-01-13 | Patch 2.1.2 (Ancient Items, Conduit Pylon Rework) |
 | **`2.1.1`** | `27255` | MPQ 32-bit | 🟢 Live CDN | 2014-09-23 | Patch 2.1.1 (Kadala Bloodshard Costs, Pet Toughness) |
 | **`2.1.0`** | `26451` | MPQ 32-bit | 🟢 Live CDN | 2014-08-26 | Major Update (Greater Rifts, Legendary Gems, The Vault) |
@@ -216,7 +221,7 @@
 # Launch the interactive GUI (default when no flags are passed)
 Diablo3Forever.exe
 
-# List all 91 official CDN builds and exit
+# List all 93 official CDN builds and exit
 Diablo3Forever.exe --list-versions
 
 # Install the newest Live Reaper of Souls (2.8.0.99920) silently

@@ -287,7 +287,7 @@ namespace D3Downloader
             if (listVersions)
             {
                 Console.WriteLine("======================================================================================================================");
-                Console.WriteLine(" Available Official Blizzard CDN Diablo III Builds (91 Total Supported Builds Across Retail, PTR & Beta)");
+                Console.WriteLine($" Available Official Blizzard CDN Diablo III Builds ({D3BuildCatalog.AllBuilds.Count} Total Supported Builds Across Retail, PTR & Beta)");
                 Console.WriteLine("======================================================================================================================");
                 foreach (var b in D3BuildCatalog.AllBuilds)
                 {
@@ -308,7 +308,7 @@ namespace D3Downloader
             var resolvedBuild = D3BuildCatalog.Resolve(versionArg);
             if (resolvedBuild == null)
             {
-                Console.Error.WriteLine($"[ERROR] Unknown version or build '{versionArg}'. Run with --list-versions to see all 91 supported builds.");
+                Console.Error.WriteLine($"[ERROR] Unknown version or build '{versionArg}'. Run with --list-versions to see all {D3BuildCatalog.AllBuilds.Count} supported builds.");
                 return 1;
             }
 
