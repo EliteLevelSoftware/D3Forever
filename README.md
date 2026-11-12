@@ -33,7 +33,7 @@
 
 ## Key Features
 
-- **100% Direct from Official Blizzard CDNs:** Every byte of the 83 legacy MPQ builds and live CASC clients is fetched directly from Blizzard's official distribution servers (`us.patch.battle.net`, `us.cdn.blizzard.com`, and `dist.blizzard.com.edgesuite.net`). Zero third-party mirrors, re-uploads, or modified game binaries are used.
+- **100% Direct from Official Blizzard CDNs:** Every byte of the 83 legacy MPQ builds and live CASC clients is fetched directly from Blizzard's official distribution servers (`us.patch.battle.net`, `us.cdn.blizzard.com`, and `blzddist1-a.akamaihd.net`). Zero third-party mirrors, re-uploads, or modified game binaries are used.
 
 > [!NOTE]
 > ### 🔍 Blizzard CDN Reality: Legacy MPQ vs. Live CASC vs. Historical CASC
@@ -59,6 +59,15 @@
 - **GUI + Headless CLI Support:** Run `Diablo3Forever.exe` with no arguments for the interactive GUI, or pass CLI flags for 100% silent, unattended deployment and batch backups.
 
 ---
+
+## Security & Integrity
+
+- **HTTPS-only transport:** Every Blizzard endpoint (NGDP patch servers, CDN config/indices/archives, legacy `.direct` MPQ mirrors) is contacted over TLS 1.2+. Plain-HTTP endpoints are never used.
+- **Trusted-host allow-list:** CDN hosts advertised by Blizzard metadata are only honoured when they belong to a Blizzard-controlled domain (`*.blizzard.com`, `*.battle.net`, `*.akamaihd.net`, `*.edgesuite.net`, `*.llnwd.net`).
+- **Verified manifests:** `BuildConfig` / `CDNConfig` / `ProductConfig` files are validated against their MD5 content hashes; every BLTE chunk is validated against the per-chunk MD5 in its header.
+- **Path-traversal guards:** File names coming from remote manifests, MPQ list files and `.mfil` entries can never write outside the selected installation folder.
+- **Verified self-update:** The built-in updater only accepts GitHub HTTPS URLs and verifies the downloaded `Diablo3Forever.exe` against the release's `SHA256SUMS.txt` before replacing the running binary.
+- **No telemetry, no credentials, no background services:** The application only performs the HTTP requests required for the install/backup you requested.
 
 ## Headless CLI & Bulk Backup Usage
 
@@ -235,6 +244,13 @@ Diablo3Forever.exe "C:\Games\D3-1.0.3-Binaries" --build 10057 --binaries-only
 
 # Fast-build ONLY the 2014 Reaper of Souls 2.0.1 binaries (~35 MB download)
 Diablo3Forever.exe "C:\Games\D3-2.0.1-Binaries" --build 22044 --binaries-only
+
+# Repair an existing install: rebuild the CASC .idx/shmem from the local data.NNN files
+# and re-sync the client's NGDP catalog (retired archives, index groups, .build.info)
+Diablo3Forever.exe --rebuild-casc "C:\Games\DiabloIII-2.7.6.91007"
+
+# Only re-sync the NGDP catalog of an existing install (fast, no download, no re-index)
+Diablo3Forever.exe --fix-ngdp "C:\Games\DiabloIII-2.7.6.91007"
 ```
 
 ---
