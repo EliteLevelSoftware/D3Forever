@@ -44,9 +44,9 @@ namespace D3Downloader
             : (!string.IsNullOrEmpty(CdnConfigUrl)
                 ? CdnConfigUrl
                 : (!string.IsNullOrEmpty(BuildConfigHash)
-                    ? $"http://us.cdn.blizzard.com/tpr/diablo3/config/{BuildConfigHash.Substring(0, 2)}/{BuildConfigHash.Substring(2, 2)}/{BuildConfigHash}"
+                    ? $"https://us.cdn.blizzard.com/tpr/diablo3/config/{BuildConfigHash.Substring(0, 2)}/{BuildConfigHash.Substring(2, 2)}/{BuildConfigHash}"
                     : (IsCasc
-                        ? $"http://us.patch.battle.net:1119/{ProductCode}/versions"
+                        ? $"https://us.patch.battle.net/{ProductCode}/versions"
                         : (BuildNumber > BaseBuildNumber
                             ? $"{BaseDirectUrl}/Updates/d3-0-{BuildNumber}-Win-final.MPQ"
                             : $"{BaseDirectUrl}/Data_D3/PC/MPQs/base-Win.mpq"))));
@@ -62,15 +62,15 @@ namespace D3Downloader
 
     public static class D3BuildCatalog
     {
-        public const string VanillaDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod-retail/NA/8370.direct";
+        public const string VanillaDirectBaseUrl = "https://blzddist1-a.akamaihd.net/d3-pod-retail/NA/8370.direct";
         public const string VanillaMfilFileName = "d3-16603-5A26B6C69DFDB16C25E1D05B0EEE83C2.mfil";
-        public const string VanillaPtrDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod/public-test/Global/10485.direct";
-        public const string VanillaBetaDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod/20FB5BE9/NA/7162.direct";
+        public const string VanillaPtrDirectBaseUrl = "https://blzddist1-a.akamaihd.net/d3-pod/public-test/Global/10485.direct";
+        public const string VanillaBetaDirectBaseUrl = "https://blzddist1-a.akamaihd.net/d3-pod/20FB5BE9/NA/7162.direct";
 
-        public const string RosDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod-retail/NA/20813.direct";
+        public const string RosDirectBaseUrl = "https://blzddist1-a.akamaihd.net/d3-pod-retail/NA/20813.direct";
         public const string RosMfilFileName = "d3-28709-85F13E62259AEC63DC654C8F847A7CAF.mfil";
-        public const string RosPtrDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod/public-test/NA/23119.direct";
-        public const string RosBetaDirectBaseUrl = "http://dist.blizzard.com.edgesuite.net/d3-pod/beta/00FC2DE9/NA/18962.direct";
+        public const string RosPtrDirectBaseUrl = "https://blzddist1-a.akamaihd.net/d3-pod/public-test/NA/23119.direct";
+        public const string RosBetaDirectBaseUrl = "https://blzddist1-a.akamaihd.net/d3-pod/beta/00FC2DE9/NA/18962.direct";
 
         public static readonly IReadOnlyList<D3BuildCatalogItem> AllBuilds = new List<D3BuildCatalogItem>
         {
@@ -79,15 +79,15 @@ namespace D3Downloader
             // =========================================================================
             new() { Version = "2.8.0", BuildNumber = 99920, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "Live Retail", Summary = "Global Live Retail Client (64-bit CASC)", BuildConfigHash = "e34fc3fb7831a77e0ad7def0bb399ac7", CdnConfigHash = "6547fc64ca796c7c1b25864145814ace", RequiresOfflineArchive = false },
             new() { Version = "2.8.1", BuildNumber = 101167, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3cn", ReleaseDate = "CN CDN", Summary = "Patch 2.8.1 Production Client (64-bit CASC)", BuildConfigHash = "a3cf75f3a099fffa3628e9d6dae762c9", CdnConfigHash = "6547fc64ca796c7c1b25864145814ace", RequiresOfflineArchive = false },
-            new() { Version = "2.7.8", BuildNumber = 97927, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-09-10", Summary = "Patch 2.7.8 Post-Loc Production Build (Hybrid CASC)", BuildConfigHash = "3c08a11365511a36115399741311d6a1", CdnConfigHash = "04c804438ffe247c4b310951a48a2ac7", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/3c/08/3c08a11365511a36115399741311d6a1", RequiresOfflineArchive = false },
-            new() { Version = "2.7.7", BuildNumber = 93903, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-02-06", Summary = "Patch 2.7.7a Production Release Candidate 2 (Hybrid CASC)", BuildConfigHash = "0e49135ccc3ae6496e78c92e280da93f", CdnConfigHash = "3551b8cd22795a223fd8d268bb14d3ba", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/0e/49/0e49135ccc3ae6496e78c92e280da93f", RequiresOfflineArchive = false },
-            new() { Version = "2.7.7", BuildNumber = 92326, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-01-09", Summary = "Patch 2.7.7 Production Release Candidate 1 (Hybrid CASC)", BuildConfigHash = "ef5defe7bbf218a323336273c86be31c", CdnConfigHash = "c0de265ca1f1cb28d17566ae7c4e6625", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/ef/5d/ef5defe7bbf218a323336273c86be31c", RequiresOfflineArchive = false },
-            new() { Version = "2.7.6", BuildNumber = 91007, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2023-09-12", Summary = "Patch 2.7.6 Solo Self-Found Update (Hybrid CASC)", BuildConfigHash = "8070cfaf79f4ce7338a895fff28b135d", CdnConfigHash = "2cc7d028bf14c9f9806dc395646a62e7", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/80/70/8070cfaf79f4ce7338a895fff28b135d", RequiresOfflineArchive = false },
-            new() { Version = "2.7.4", BuildNumber = 84161, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2022-08-23", Summary = "Patch 2.7.4 Angelic Crucibles (Live CDN + Server Standard)", BuildConfigHash = "5194054cfa6480884c9a451b6f1107a3", CdnConfigHash = "3233a305369813698170265c3ac8a5cf", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/51/94/5194054cfa6480884c9a451b6f1107a3", RequiresOfflineArchive = false },
-            new() { Version = "2.7.3", BuildNumber = 82785, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3cn", ReleaseDate = "2022-04-12", Summary = "Patch 2.7.3 Echoing Nightmare Client (64-bit CASC)", BuildConfigHash = "cebe6c6f58867665a442156284766fd2", CdnConfigHash = "3ba10fda121be96dd67e23aa7447f057", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/ce/be/cebe6c6f58867665a442156284766fd2", RequiresOfflineArchive = false },
-            new() { Version = "2.6.10", BuildNumber = 71254, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2020-11-10", Summary = "Patch 2.6.10 Shadow Clones (Hybrid CASC)", BuildConfigHash = "f73d98ce9ae0152fb1d6a972669c17c6", CdnConfigHash = "bf6b945936d6269c9b137d0530f9d806", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/f7/3d/f73d98ce9ae0152fb1d6a972669c17c6", RequiresOfflineArchive = false },
-            new() { Version = "2.6.9", BuildNumber = 68722, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2020-06-23", Summary = "Patch 2.6.9 Trials of Tempests (Hybrid CASC)", BuildConfigHash = "17992473d8a335eb5a7fed6699462db8", CdnConfigHash = "bf6b945936d6269c9b137d0530f9d806", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/17/99/17992473d8a335eb5a7fed6699462db8", RequiresOfflineArchive = false },
-            new() { Version = "2.6.4", BuildNumber = 55430, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2019-01-15", Summary = "Patch 2.6.4 Season of Grandeur (Hybrid CASC)", BuildConfigHash = "a6b0c93f4726cafe427b3d4391a14a9e", CdnConfigHash = "eacd8570d54d4cbd1c829ee3ccc49257", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/a6/b0/a6b0c93f4726cafe427b3d4391a14a9e", RequiresOfflineArchive = false },
+            new() { Version = "2.7.8", BuildNumber = 97927, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-09-10", Summary = "Patch 2.7.8 Post-Loc Production Build (Hybrid CASC)", BuildConfigHash = "3c08a11365511a36115399741311d6a1", CdnConfigHash = "04c804438ffe247c4b310951a48a2ac7", CdnConfigUrl = "https://us.cdn.blizzard.com/tpr/diablo3/config/3c/08/3c08a11365511a36115399741311d6a1", RequiresOfflineArchive = false },
+            new() { Version = "2.7.7", BuildNumber = 93903, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-02-06", Summary = "Patch 2.7.7a Production Release Candidate 2 (Hybrid CASC)", BuildConfigHash = "0e49135ccc3ae6496e78c92e280da93f", CdnConfigHash = "3551b8cd22795a223fd8d268bb14d3ba", CdnConfigUrl = "https://us.cdn.blizzard.com/tpr/diablo3/config/0e/49/0e49135ccc3ae6496e78c92e280da93f", RequiresOfflineArchive = false },
+            new() { Version = "2.7.7", BuildNumber = 92326, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-01-09", Summary = "Patch 2.7.7 Production Release Candidate 1 (Hybrid CASC)", BuildConfigHash = "ef5defe7bbf218a323336273c86be31c", CdnConfigHash = "c0de265ca1f1cb28d17566ae7c4e6625", CdnConfigUrl = "https://us.cdn.blizzard.com/tpr/diablo3/config/ef/5d/ef5defe7bbf218a323336273c86be31c", RequiresOfflineArchive = false },
+            new() { Version = "2.7.6", BuildNumber = 91007, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2023-09-12", Summary = "Patch 2.7.6 Solo Self-Found Update (Hybrid CASC)", BuildConfigHash = "8070cfaf79f4ce7338a895fff28b135d", CdnConfigHash = "2cc7d028bf14c9f9806dc395646a62e7", CdnConfigUrl = "https://us.cdn.blizzard.com/tpr/diablo3/config/80/70/8070cfaf79f4ce7338a895fff28b135d", RequiresOfflineArchive = false },
+            new() { Version = "2.7.4", BuildNumber = 84161, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2022-08-23", Summary = "Patch 2.7.4 Angelic Crucibles (Live CDN + Server Standard)", BuildConfigHash = "5194054cfa6480884c9a451b6f1107a3", CdnConfigHash = "3233a305369813698170265c3ac8a5cf", CdnConfigUrl = "https://us.cdn.blizzard.com/tpr/diablo3/config/51/94/5194054cfa6480884c9a451b6f1107a3", RequiresOfflineArchive = false },
+            new() { Version = "2.7.3", BuildNumber = 82785, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3cn", ReleaseDate = "2022-04-12", Summary = "Patch 2.7.3 Echoing Nightmare Client (64-bit CASC)", BuildConfigHash = "cebe6c6f58867665a442156284766fd2", CdnConfigHash = "3ba10fda121be96dd67e23aa7447f057", CdnConfigUrl = "https://us.cdn.blizzard.com/tpr/diablo3/config/ce/be/cebe6c6f58867665a442156284766fd2", RequiresOfflineArchive = false },
+            new() { Version = "2.6.10", BuildNumber = 71254, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2020-11-10", Summary = "Patch 2.6.10 Shadow Clones (Hybrid CASC)", BuildConfigHash = "f73d98ce9ae0152fb1d6a972669c17c6", CdnConfigHash = "bf6b945936d6269c9b137d0530f9d806", CdnConfigUrl = "https://us.cdn.blizzard.com/tpr/diablo3/config/f7/3d/f73d98ce9ae0152fb1d6a972669c17c6", RequiresOfflineArchive = false },
+            new() { Version = "2.6.9", BuildNumber = 68722, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2020-06-23", Summary = "Patch 2.6.9 Trials of Tempests (Hybrid CASC)", BuildConfigHash = "17992473d8a335eb5a7fed6699462db8", CdnConfigHash = "bf6b945936d6269c9b137d0530f9d806", CdnConfigUrl = "https://us.cdn.blizzard.com/tpr/diablo3/config/17/99/17992473d8a335eb5a7fed6699462db8", RequiresOfflineArchive = false },
+            new() { Version = "2.6.4", BuildNumber = 55430, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2019-01-15", Summary = "Patch 2.6.4 Season of Grandeur (Hybrid CASC)", BuildConfigHash = "a6b0c93f4726cafe427b3d4391a14a9e", CdnConfigHash = "eacd8570d54d4cbd1c829ee3ccc49257", CdnConfigUrl = "https://us.cdn.blizzard.com/tpr/diablo3/config/a6/b0/a6b0c93f4726cafe427b3d4391a14a9e", RequiresOfflineArchive = false },
             new() { Version = "2.1.2", BuildNumber = 28709, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = RosMfilFileName, ReleaseDate = "2015-01-13", Summary = "Patch 2.1.2 (Ancient Items, Conduit Pylon Rework)" },
             new() { Version = "2.1.1", BuildNumber = 27255, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-27255-35F65D5686569C9A188AC0264ED26583.mfil", ReleaseDate = "2014-09-23", Summary = "Patch 2.1.1 (Kadala Bloodshard Costs, Pet Toughness)" },
             new() { Version = "2.1.0", BuildNumber = 26451, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-26451-6032812D57D4CE684194552583B4275F.mfil", ReleaseDate = "2014-08-26", Summary = "Major Update (Greater Rifts, Legendary Gems, The Vault)" },
@@ -273,23 +273,23 @@ namespace D3Downloader
             string baseRel = BackupEngine.GetRelativeFromBaseUrl(build.BaseDirectUrl).Replace('/', Path.DirectorySeparatorChar);
 
             // 1. Check RawBlizzardCDN with base URL subpath
-            string p1 = Path.Combine(localArchiveRoot, "RawBlizzardCDN", baseRel, normRel);
-            if (File.Exists(p1) && new FileInfo(p1).Length > 0) return p1;
+            string p1 = Program.TrySafePathUnder(localArchiveRoot, Path.Combine("RawBlizzardCDN", baseRel, normRel));
+            if (p1 != null && File.Exists(p1) && new FileInfo(p1).Length > 0) return p1;
 
             // 2. Check RawBlizzardCDN flat
-            string p2 = Path.Combine(localArchiveRoot, "RawBlizzardCDN", normRel);
-            if (File.Exists(p2) && new FileInfo(p2).Length > 0) return p2;
+            string p2 = Program.TrySafePathUnder(localArchiveRoot, Path.Combine("RawBlizzardCDN", normRel));
+            if (p2 != null && File.Exists(p2) && new FileInfo(p2).Length > 0) return p2;
 
             // 3. Check _BaseArchiveCache
-            string p3 = Path.Combine(localArchiveRoot, "_BaseArchiveCache", normRel);
-            if (File.Exists(p3) && new FileInfo(p3).Length > 0) return p3;
+            string p3 = Program.TrySafePathUnder(localArchiveRoot, Path.Combine("_BaseArchiveCache", normRel));
+            if (p3 != null && File.Exists(p3) && new FileInfo(p3).Length > 0) return p3;
 
-            string p3b = Path.Combine(localArchiveRoot, "_BaseArchiveCache", Path.GetFileName(normRel));
-            if (File.Exists(p3b) && new FileInfo(p3b).Length > 0) return p3b;
+            string p3b = Program.TrySafePathUnder(localArchiveRoot, Path.Combine("_BaseArchiveCache", Path.GetFileName(normRel)));
+            if (p3b != null && File.Exists(p3b) && new FileInfo(p3b).Length > 0) return p3b;
 
             // 4. Check directly under localArchiveRoot
-            string p4 = Path.Combine(localArchiveRoot, normRel);
-            if (File.Exists(p4) && new FileInfo(p4).Length > 0) return p4;
+            string p4 = Program.TrySafePathUnder(localArchiveRoot, normRel);
+            if (p4 != null && File.Exists(p4) && new FileInfo(p4).Length > 0) return p4;
 
             // 5. Check in Fast Binaries folder for this build
             string editionDir = build.IsRoS ? "Reaper of Souls" : "Vanilla Classic";
@@ -300,8 +300,8 @@ namespace D3Downloader
                 D3BuildCategory.Beta => "Closed Beta",
                 _ => "Other"
             };
-            string p5 = Path.Combine(localArchiveRoot, editionDir, categoryDir, $"{build.Version}.{build.BuildNumber}", normRel);
-            if (File.Exists(p5) && new FileInfo(p5).Length > 0) return p5;
+            string p5 = Program.TrySafePathUnder(localArchiveRoot, Path.Combine(editionDir, categoryDir, $"{build.Version}.{build.BuildNumber}", normRel));
+            if (p5 != null && File.Exists(p5) && new FileInfo(p5).Length > 0) return p5;
 
             return null;
         }
@@ -394,7 +394,7 @@ namespace D3Downloader
                     continue;
                 byte[] data = baseMpq.ReadFile(relFile);
                 if (data == null) continue;
-                string destPath = Path.Combine(targetDir, relFile.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar));
+                string destPath = Program.SafePathUnder(targetDir, relFile);
                 Directory.CreateDirectory(Path.GetDirectoryName(destPath));
                 await File.WriteAllBytesAsync(destPath, data, ct);
                 extractedBase++;
@@ -440,8 +440,8 @@ namespace D3Downloader
                         string line = rawLine.Trim();
                         if (line.Length == 0 || line.StartsWith("*") || line.StartsWith("Updates\\", StringComparison.OrdinalIgnoreCase))
                             continue;
-                        string delPath = Path.Combine(targetDir, line.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar));
-                        if (File.Exists(delPath))
+                        string delPath = Program.TrySafePathUnder(targetDir, line);
+                        if (delPath != null && File.Exists(delPath))
                         {
                             try { File.Delete(delPath); } catch { }
                         }
@@ -476,7 +476,7 @@ namespace D3Downloader
                                 $"MD5 mismatch after patching '{targetRelPath}': expected {expectedMd5Hex}, got {actualMd5Hex}.");
                         }
 
-                        string outPath = Path.Combine(targetDir, targetRelPath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar));
+                        string outPath = Program.SafePathUnder(targetDir, targetRelPath);
                         Directory.CreateDirectory(Path.GetDirectoryName(outPath));
                         await File.WriteAllBytesAsync(outPath, newData, ct);
                         patchedCount++;
@@ -497,7 +497,7 @@ namespace D3Downloader
                             continue;
                         }
 
-                        string outPath = Path.Combine(targetDir, entry.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar));
+                        string outPath = Program.SafePathUnder(targetDir, entry);
                         Directory.CreateDirectory(Path.GetDirectoryName(outPath));
 
                         if (patchMpq.IsPatchFile(entry))
@@ -508,6 +508,13 @@ namespace D3Downloader
                             {
                                 byte[] newData = BlizzardPtchPatcher.ApplyPtch(oldData, ptchData, out string expectedMd5Hex);
                                 string actualMd5Hex = Convert.ToHexString(md5.ComputeHash(newData));
+                                if (!string.IsNullOrWhiteSpace(expectedMd5Hex) &&
+                                    !expectedMd5Hex.All(c => c == '0') &&
+                                    !string.Equals(expectedMd5Hex, actualMd5Hex, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    throw new InvalidDataException(
+                                        $"MD5 mismatch after patching '{entry}': expected {expectedMd5Hex}, got {actualMd5Hex}.");
+                                }
                                 await File.WriteAllBytesAsync(outPath, newData, ct);
                                 patchedCount++;
                                 log($"      [PTCH OK] {entry,-36} ({newData.Length / 1024.0,8:F1} KB | MD5: {actualMd5Hex.Substring(0, 12)}...)");
@@ -535,7 +542,7 @@ namespace D3Downloader
                         byte[] entryBytes = patchMpq.ReadFile(entry);
                         if (entryBytes != null)
                         {
-                            string outPath = Path.Combine(targetDir, entry.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar));
+                            string outPath = Program.SafePathUnder(targetDir, entry);
                             Directory.CreateDirectory(Path.GetDirectoryName(outPath));
                             await File.WriteAllBytesAsync(outPath, entryBytes, ct);
                         }
@@ -595,7 +602,7 @@ namespace D3Downloader
 
             foreach (var entry in targetEntries)
             {
-                string fileDest = Path.Combine(targetDir, entry.RelativePath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar));
+                string fileDest = Program.SafePathUnder(targetDir, entry.RelativePath);
                 string fileUrl = $"{build.BaseDirectUrl}/{entry.RelativePath.Replace('\\', '/')}";
                 string localCached = TryResolveFromLocalArchive(localArchiveSource, entry.RelativePath, build);
 
@@ -643,6 +650,11 @@ namespace D3Downloader
             long expectedSize,
             CancellationToken ct)
         {
+            if (!Uri.TryCreate(url, UriKind.Absolute, out Uri uri) || uri.Scheme != Uri.UriSchemeHttps)
+            {
+                throw new InvalidOperationException($"Refusing insecure download URL '{url}'.");
+            }
+
             Directory.CreateDirectory(Path.GetDirectoryName(destPath));
 
             long existingLength = 0;
@@ -654,7 +666,7 @@ namespace D3Downloader
                     return;
             }
 
-            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            using var req = new HttpRequestMessage(HttpMethod.Get, uri);
             if (existingLength > 0)
             {
                 req.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(existingLength, null);
@@ -662,7 +674,14 @@ namespace D3Downloader
 
             using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
             if (resp.StatusCode == System.Net.HttpStatusCode.RequestedRangeNotSatisfiable)
+            {
+                if (expectedSize > 0 && new FileInfo(destPath).Length != expectedSize)
+                {
+                    try { File.Delete(destPath); } catch { }
+                    throw new InvalidDataException($"Server rejected resume for '{uri}' and the local file size does not match the expected {expectedSize} bytes.");
+                }
                 return;
+            }
 
             resp.EnsureSuccessStatusCode();
 
@@ -673,6 +692,14 @@ namespace D3Downloader
             await using var inStream = await resp.Content.ReadAsStreamAsync(ct);
             await using var outStream = new FileStream(destPath, mode, FileAccess.Write, FileShare.None, 128 * 1024, useAsync: true);
             await inStream.CopyToAsync(outStream, ct);
+
+            if (expectedSize > 0 && outStream.Length != expectedSize)
+            {
+                long actual = outStream.Length;
+                outStream.Dispose();
+                try { File.Delete(destPath); } catch { }
+                throw new InvalidDataException($"Incomplete download for '{uri}': expected {expectedSize} bytes, got {actual}.");
+            }
         }
     }
 

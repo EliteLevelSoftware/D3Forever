@@ -20,11 +20,23 @@ namespace D3Downloader
     {
         private static readonly string[] DefaultPatchHosts =
         {
-            "http://us.patch.battle.net:1119/d3",
+            "https://us.patch.battle.net/d3",
             "https://us.version.battle.net/v2/products/d3",
-            "http://eu.patch.battle.net:1119/d3",
+            "https://eu.patch.battle.net/d3",
             "https://eu.version.battle.net/v2/products/d3"
         };
+
+        // Only these Blizzard-controlled domains may ever be used as a download source.
+        private static readonly string[] TrustedCdnHostSuffixes =
+        {
+            ".blizzard.com",
+            ".battle.net",
+            ".akamaihd.net",
+            ".edgesuite.net",
+            ".llnwd.net"
+        };
+
+        private const string DefaultSharedCdnConfigKey = "6547fc64ca796c7c1b25864145814ace";
 
         private static HttpClient _http;
         private static List<string> _cdnHosts = new();
@@ -33,6 +45,68 @@ namespace D3Downloader
 
         [System.Runtime.InteropServices.DllImport("kernel32.dll")]
         private static extern bool AttachConsole(int dwProcessId);
+
+        /// <summary>
+        /// Resolves a manifest-supplied relative path inside <paramref name="root"/> and fails
+        /// if the result would escape it (path traversal / absolute path injection).
+        /// </summary>
+        internal static string SafePathUnder(string root, string relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(root))
+                throw new ArgumentException("A target root directory is required.", nameof(root));
+            if (string.IsNullOrWhiteSpace(relativePath))
+                throw new ArgumentException("A relative path is required.", nameof(relativePath));
+
+            string normalized = relativePath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+            if (Path.IsPathRooted(normalized) || normalized.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+                throw new InvalidDataException($"Refusing unsafe path '{relativePath}'.");
+
+            string rootFull = Path.GetFullPath(root);
+            string combined = Path.GetFullPath(Path.Combine(rootFull, normalized));
+            string rootWithSeparator = rootFull.EndsWith(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal)
+                ? rootFull
+                : rootFull + Path.DirectorySeparatorChar;
+
+            if (!combined.StartsWith(rootWithSeparator, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException($"Path '{relativePath}' escapes the target directory.");
+
+            return combined;
+        }
+
+        /// <summary>
+        /// Same as <see cref="SafePathUnder"/> but returns null instead of throwing.
+        /// </summary>
+        internal static string TrySafePathUnder(string root, string relativePath)
+        {
+            try { return SafePathUnder(root, relativePath); }
+            catch (Exception) { return null; }
+        }
+
+        internal static bool IsTrustedCdnHost(string host)
+        {
+            if (string.IsNullOrWhiteSpace(host)) return false;
+            if (Uri.CheckHostName(host.Trim()) != UriHostNameType.Dns) return false;
+            return TrustedCdnHostSuffixes.Any(s => host.Trim().EndsWith(s, StringComparison.OrdinalIgnoreCase));
+        }
+
+        internal static string ComputeMd5Hex(byte[] data)
+        {
+            using var md5 = MD5.Create();
+            return Convert.ToHexString(md5.ComputeHash(data));
+        }
+
+        internal static bool HashMatchesMd5(byte[] data, string expectedMd5Hex) =>
+            !string.IsNullOrWhiteSpace(expectedMd5Hex) &&
+            string.Equals(ComputeMd5Hex(data), expectedMd5Hex, StringComparison.OrdinalIgnoreCase);
+
+        internal static bool IsValidHash32(string value) =>
+            !string.IsNullOrEmpty(value) && value.Length == 32 && value.All(Uri.IsHexDigit);
+
+        internal static bool IsSupportedLocale(string locale) =>
+            !string.IsNullOrWhiteSpace(locale)
+            && (locale.Equals("allText", StringComparison.OrdinalIgnoreCase)
+                || locale.Equals("allLocales", StringComparison.OrdinalIgnoreCase)
+                || BackupEngine.AllSupportedLocales.Contains(locale, StringComparer.OrdinalIgnoreCase));
 
         [STAThread]
         public static int Main(string[] args)
@@ -234,6 +308,107 @@ namespace D3Downloader
 
                     return ok ? 0 : 1;
                 }
+                else if (arg.Equals("--rebuild-casc", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    string installRoot = Path.GetFullPath(args[++i]);
+                    bool keepShmem = i + 1 < args.Length && args[i + 1].Equals("--keep-shmem", StringComparison.OrdinalIgnoreCase);
+                    if (keepShmem) i++;
+                    AttachConsole(-1);
+                    try
+                    {
+                        var stdOut = new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true };
+                        Console.SetOut(stdOut);
+                        var stdErr = new StreamWriter(Console.OpenStandardError()) { AutoFlush = true };
+                        Console.SetError(stdErr);
+                    }
+                    catch { }
+
+                    string cascDir = Path.Combine(installRoot, "Data", "data");
+                    Console.WriteLine($"Rebuilding CASC indexes from {cascDir} ...");
+                    try
+                    {
+                        int records = CascStorageWriter.RebuildFromExisting(cascDir, Console.WriteLine, keepShmem);
+                        Console.WriteLine($"Rebuilt {records:N0} chunk records, 16 .idx files and shmem.");
+                        string buildInfo = Path.Combine(installRoot, ".build.info");
+                        if (File.Exists(buildInfo))
+                        {
+                            string[] lines = File.ReadAllLines(buildInfo);
+                            if (lines.Length >= 2)
+                            {
+                                string[] cols = lines[1].Split('|');
+                                if (cols.Length >= 5)
+                                {
+                                    cols[4] = "";
+                                    lines[1] = string.Join('|', cols);
+                                    File.WriteAllLines(buildInfo, lines, Encoding.ASCII);
+                                    Console.WriteLine("Cleared the Install Key in .build.info (matches Blizzard deployments).");
+                                }
+                            }
+                        }
+                        try
+                        {
+                            NgdpConsistency.Apply(installRoot, Console.WriteLine);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[WARNING] CDN catalog repair failed: {ex.Message}");
+                        }
+                        return 0;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"[ERROR] {ex.GetType().Name}: {ex.Message}");
+                        return 1;
+                    }
+                }
+                else if (arg.Equals("--verify-casc", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    string installRoot = Path.GetFullPath(args[++i]);
+                    AttachConsole(-1);
+                    try
+                    {
+                        var stdOut = new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true };
+                        Console.SetOut(stdOut);
+                        var stdErr = new StreamWriter(Console.OpenStandardError()) { AutoFlush = true };
+                        Console.SetError(stdErr);
+                    }
+                    catch { }
+                    try
+                    {
+                        return VerifyCascAsync(installRoot).GetAwaiter().GetResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"[ERROR] {ex.GetType().Name}: {ex.Message}");
+                        return 1;
+                    }
+                }
+                else if (arg.Equals("--fix-ngdp", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    string installRoot = Path.GetFullPath(args[++i]);
+                    AttachConsole(-1);
+                    try
+                    {
+                        var stdOut = new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true };
+                        Console.SetOut(stdOut);
+                        var stdErr = new StreamWriter(Console.OpenStandardError()) { AutoFlush = true };
+                        Console.SetError(stdErr);
+                    }
+                    catch { }
+                    try
+                    {
+                        var result = NgdpConsistency.Apply(installRoot, Console.WriteLine);
+                        Console.WriteLine(result.Changed
+                            ? "CDN catalog rewritten; the retail client no longer needs the retired artefacts."
+                            : "CDN catalog is already consistent.");
+                        return 0;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"[ERROR] {ex.GetType().Name}: {ex.Message}");
+                        return 1;
+                    }
+                }
                 else if (arg.Equals("--check-update", StringComparison.OrdinalIgnoreCase) || arg.Equals("--update", StringComparison.OrdinalIgnoreCase))
                 {
                     AttachConsole(-1);
@@ -305,6 +480,18 @@ namespace D3Downloader
                 return 0;
             }
 
+            if (!IsSupportedLocale(locale))
+            {
+                Console.Error.WriteLine($"[ERROR] Unsupported locale '{locale}'. Use one of: {string.Join(", ", BackupEngine.AllSupportedLocales)}, allText, allLocales.");
+                return 1;
+            }
+
+            if (string.IsNullOrWhiteSpace(region) || !region.All(char.IsLetterOrDigit))
+            {
+                Console.Error.WriteLine($"[ERROR] Invalid region '{region}'.");
+                return 1;
+            }
+
             var resolvedBuild = D3BuildCatalog.Resolve(versionArg);
             if (resolvedBuild == null)
             {
@@ -342,6 +529,15 @@ namespace D3Downloader
             CancellationToken ct = default,
             string localArchiveSource = null)
         {
+            if (!IsSupportedLocale(locale))
+            {
+                throw new ArgumentException($"Unsupported locale '{locale}'.", nameof(locale));
+            }
+            if (string.IsNullOrWhiteSpace(region) || !region.All(char.IsLetterOrDigit))
+            {
+                throw new ArgumentException($"Invalid region '{region}'.", nameof(region));
+            }
+
             log("========================================================================");
             log(" Diablo III Official Blizzard CDN Downloader & Multi-Version Builder");
             log("========================================================================");
@@ -471,7 +667,7 @@ namespace D3Downloader
                             Name = region,
                             Path = "tpr/diablo3",
                             Hosts = new[] { "us.cdn.blizzard.com", "level3.blizzard.com", "cdn.blizzard.com", "blzddist1-a.akamaihd.net" },
-                            Servers = "http://us.cdn.blizzard.com/?maxhosts=4",
+                            Servers = "https://us.cdn.blizzard.com/?maxhosts=4",
                             ConfigPath = "tpr/diablo3/config"
                         };
                     }
@@ -486,11 +682,17 @@ namespace D3Downloader
 
                 _cdnPath = cdnInfo.Path.Trim('/');
                 _cdnConfigPath = string.IsNullOrWhiteSpace(cdnInfo.ConfigPath) ? "tpr/configs/data" : cdnInfo.ConfigPath.Trim('/');
-                _cdnHosts = new[] { "us.cdn.blizzard.com", "cdn.blizzard.com", "level3.blizzard.com", "blzddist1-a.akamaihd.net", "dist.blizzard.com.edgesuite.net" }
+                _cdnHosts = new[] { "us.cdn.blizzard.com", "cdn.blizzard.com", "level3.blizzard.com", "blzddist1-a.akamaihd.net" }
                     .Concat(cdnInfo.Hosts ?? Array.Empty<string>())
-                    .Where(h => !string.IsNullOrWhiteSpace(h))
+                    .Select(h => h?.Trim())
+                    .Where(h => IsTrustedCdnHost(h))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
+                if (_cdnHosts.Count == 0)
+                {
+                    _cdnHosts.Add("us.cdn.blizzard.com");
+                    _cdnHosts.Add("blzddist1-a.akamaihd.net");
+                }
 
                 Console.WriteLine($"      Selected Build : {versionInfo.VersionsName} (Build ID {versionInfo.BuildId})");
                 Console.WriteLine($"      BuildConfig    : {versionInfo.BuildConfig}");
@@ -539,11 +741,12 @@ namespace D3Downloader
                 }
 
                 string[] archives = cdnCfg.TryGetValue("archives", out string archStr)
-                    ? archStr.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    ? archStr.Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(IsValidHash32).ToArray()
                     : Array.Empty<string>();
                 string[] patchArchives = cdnCfg.TryGetValue("patch-archives", out string pArchStr)
-                    ? pArchStr.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    ? pArchStr.Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(IsValidHash32).ToArray()
                     : Array.Empty<string>();
+                archives = await MergeWithSharedArchivesAsync(archives, versionInfo.CdnConfig, prodCode, configDir, log);
                 cdnCfg.TryGetValue("archive-group", out string archiveGroupHash);
                 cdnCfg.TryGetValue("patch-archive-group", out string patchArchiveGroupHash);
                 cdnCfg.TryGetValue("file-index", out string fileIndexHash);
@@ -561,7 +764,8 @@ namespace D3Downloader
                     archiveGroupHash,
                     patchArchiveGroupHash,
                     maxConcurrency,
-                    dryRunLimit);
+                    dryRunLimit,
+                    onProgress);
 
                 Console.WriteLine($"      Indexed {archiveIndexMap.Count:N0} unique BLTE chunks across {archives.Length} CDN archives.");
 
@@ -665,7 +869,7 @@ namespace D3Downloader
                             cascWriter.WriteEntry(ParseHex16(rootEKey), rawRoot);
                         }
 
-                        await DownloadAndWriteCascEntriesAsync(
+                        int missingChunks = await DownloadAndWriteCascEntriesAsync(
                             cascWriter,
                             cascToProcess,
                             archiveIndexMap,
@@ -677,8 +881,26 @@ namespace D3Downloader
                                 onProgress?.Invoke(mapped, msg);
                             });
 
+                        if (missingChunks > 0)
+                        {
+                            log($"[WARNING] {missingChunks:N0} game data chunk(s) are no longer hosted by Blizzard and are missing from this build.");
+                            log("          The client may hang or crash when it loads the affected assets (sounds/maps/textures).");
+                            log("          Tip: install this build from an offline archive (Backup > Assemble from Archive) for a 100% complete copy.");
+                        }
+
                         cascWriter.WriteIndicesAndShmem();
                     }
+                }
+
+                // The retail client resolves data through the CDN catalog, so the catalog must only reference
+                // artefacts that are actually present locally (Blizzard retired several of them for old builds).
+                try
+                {
+                    NgdpConsistency.Apply(targetDir, log);
+                }
+                catch (Exception ex)
+                {
+                    log($"[WARNING] CDN catalog repair failed: {ex.Message}");
                 }
 
                 if (configureShortcutFirewall)
@@ -827,7 +1049,7 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             using var p = Process.Start(new ProcessStartInfo
             {
                 FileName = "powershell.exe",
-                Arguments = $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {encoded}",
+                Arguments = $"-NoProfile -NonInteractive -EncodedCommand {encoded}",
                 UseShellExecute = false,
                 CreateNoWindow = true
             });
@@ -969,16 +1191,23 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             return dict;
         }
 
-        private static async Task<byte[]> DownloadFromCdnAsync(string relativePath, long? rangeStart = null, long? rangeEnd = null)
+        private static async Task<byte[]> DownloadFromCdnAsync(string relativePath, long? rangeStart = null, long? rangeEnd = null, string expectedMd5Hex = null)
         {
             relativePath = relativePath.TrimStart('/').ToLowerInvariant();
             Exception lastEx = null;
+            bool integrityFailure = false;
 
             for (int attempt = 0; attempt < 4; attempt++)
             {
+                bool hostHadTransientFailure = false;
                 foreach (string host in _cdnHosts)
                 {
-                    string url = $"http://{host}/{relativePath}";
+                    if (!IsTrustedCdnHost(host))
+                    {
+                        continue;
+                    }
+
+                    string url = $"https://{host}/{relativePath}";
                     try
                     {
                         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -991,32 +1220,93 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                         if (!resp.IsSuccessStatusCode)
                         {
                             lastEx = new HttpRequestException($"HTTP {(int)resp.StatusCode} on {url}");
+                            if (!IsDefinitiveNotFound(resp.StatusCode))
+                            {
+                                hostHadTransientFailure = true;
+                            }
                             continue;
                         }
-                        return await resp.Content.ReadAsByteArrayAsync(cts.Token);
+                        byte[] data = await resp.Content.ReadAsByteArrayAsync(cts.Token);
+
+                        if (rangeStart.HasValue && rangeEnd.HasValue)
+                        {
+                            long expectedRangeLength = rangeEnd.Value - rangeStart.Value + 1;
+                            if (data.Length != expectedRangeLength)
+                            {
+                                lastEx = new InvalidDataException(
+                                    $"Range request returned {data.Length} bytes instead of {expectedRangeLength} from {host}.");
+                                continue;
+                            }
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(expectedMd5Hex) && !HashMatchesMd5(data, expectedMd5Hex))
+                        {
+                            integrityFailure = true;
+                            lastEx = new InvalidDataException(
+                                $"Integrity check failed for '{relativePath}' from {host} (expected MD5 {expectedMd5Hex}).");
+                            continue;
+                        }
+
+                        return data;
                     }
                     catch (Exception ex)
                     {
                         lastEx = ex;
+                        if (ex is HttpRequestException || ex is TaskCanceledException || ex is IOException)
+                        {
+                            hostHadTransientFailure = true;
+                        }
                     }
                 }
+
+                // Every host answered 404/403/410, so retrying cannot help; fail fast instead of waiting ~4x longer.
+                if (!hostHadTransientFailure)
+                {
+                    break;
+                }
+
                 await Task.Delay(250 * (attempt + 1));
             }
+
+            if (integrityFailure)
+            {
+                throw new InvalidDataException(
+                    $"Downloaded data for '{relativePath}' failed integrity verification on every Blizzard CDN host.", lastEx);
+            }
+
             throw new IOException($"Exhausted all Blizzard CDN hosts downloading '{relativePath}'.", lastEx);
         }
 
+        private static bool IsDefinitiveNotFound(HttpStatusCode status) =>
+            status == HttpStatusCode.NotFound
+            || status == HttpStatusCode.Forbidden
+            || status == HttpStatusCode.Gone
+            || status == HttpStatusCode.Unauthorized;
+
         private static async Task<byte[]> DownloadConfigFileAsync(string configRootDir, string cdnPrefix, string hash)
         {
-            hash = hash.ToLowerInvariant();
+            hash = (hash ?? "").Trim().ToLowerInvariant();
+            if (!IsValidHash32(hash))
+            {
+                throw new InvalidDataException($"Refusing invalid config hash '{hash}'.");
+            }
+
             string subDir = Path.Combine(configRootDir, hash.Substring(0, 2), hash.Substring(2, 2));
             Directory.CreateDirectory(subDir);
             string localPath = Path.Combine(subDir, hash);
             if (File.Exists(localPath) && new FileInfo(localPath).Length > 0)
             {
-                return await File.ReadAllBytesAsync(localPath);
+                byte[] cached = await File.ReadAllBytesAsync(localPath);
+                if (HashMatchesMd5(cached, hash))
+                {
+                    return cached;
+                }
+
+                // Drop a corrupted/stale cache entry and re-download it.
+                try { File.Delete(localPath); } catch { }
             }
             string rel = $"{cdnPrefix}/{hash.Substring(0, 2)}/{hash.Substring(2, 2)}/{hash}";
-            byte[] data = await DownloadFromCdnAsync(rel);
+            byte[] data = await DownloadFromCdnAsync(rel, expectedMd5Hex: hash);
             await File.WriteAllBytesAsync(localPath, data);
             return data;
         }
@@ -1044,11 +1334,13 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             string archiveGroupHash,
             string patchArchiveGroupHash,
             int maxConcurrency,
-            int dryRunLimit)
+            int dryRunLimit,
+            Action<double, string> onProgress = null)
         {
             using var sem = new SemaphoreSlim(maxConcurrency);
             int completed = 0;
             int total = archives.Length;
+            int missingIndices = 0;
 
             // Download data archive .index files in parallel
             var indexBytesArr = new byte[archives.Length][];
@@ -1076,10 +1368,20 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                         }
                         indexBytesArr[idx] = bytes;
                         int done = Interlocked.Increment(ref completed);
-                        if (done % 25 == 0 || done == total)
+                        if (done % 5 == 0 || done == total)
                         {
                             Console.WriteLine($"      Archive indices: {done}/{total} ({(done * 100.0 / total):F0}%)");
+                            onProgress?.Invoke(10.0 + (6.0 * done / total), $"Downloading CDN archive indices: {done}/{total} ({(done * 100.0 / total):F0}%)");
                         }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Blizzard has retired a few historical archive indices; skip them instead of aborting the build.
+                        Interlocked.Increment(ref missingIndices);
+                        indexBytesArr[idx] = null;
+                        Console.WriteLine($"      [Notice] Archive index {hash.Substring(0, 12)}... is no longer hosted by Blizzard ({ex.Message}); skipping archive.");
+                        int doneSkipped = Interlocked.Increment(ref completed);
+                        onProgress?.Invoke(10.0 + (6.0 * doneSkipped / total), $"Downloading CDN archive indices: {doneSkipped}/{total} ({(doneSkipped * 100.0 / total):F0}%)");
                     }
                     finally
                     {
@@ -1089,20 +1391,39 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             }
             await Task.WhenAll(tasks);
 
+            if (total > 0 && missingIndices == total)
+            {
+                throw new IOException("None of the CDN archive indices for this build are still hosted by Blizzard.");
+            }
+            if (missingIndices > 0)
+            {
+                Console.WriteLine($"      [Notice] {missingIndices}/{total} historical archive indices are retired; continuing with {total - missingIndices} live archives.");
+            }
+
             // Download optional file-index, patch-file-index, and patch-archives indices when not in dry-run (or download all since they are tiny)
             if (!string.IsNullOrWhiteSpace(fileIndexHash))
             {
-                await DownloadIndexFileIfMissingAsync(indicesDir, "data", fileIndexHash);
+                try { await DownloadIndexFileIfMissingAsync(indicesDir, "data", fileIndexHash); }
+                catch (Exception ex) { Console.WriteLine($"      [Notice] Optional data file-index unavailable ({ex.Message})."); }
             }
             if (!string.IsNullOrWhiteSpace(patchFileIndexHash))
             {
-                await DownloadIndexFileIfMissingAsync(indicesDir, "patch", patchFileIndexHash);
+                try { await DownloadIndexFileIfMissingAsync(indicesDir, "patch", patchFileIndexHash); }
+                catch (Exception ex) { Console.WriteLine($"      [Notice] Optional patch file-index unavailable ({ex.Message})."); }
             }
 
             var patchIndexBytesArr = new byte[patchArchives.Length][];
             for (int i = 0; i < patchArchives.Length; i++)
             {
-                patchIndexBytesArr[i] = await DownloadIndexFileIfMissingAsync(indicesDir, "patch", patchArchives[i]);
+                try
+                {
+                    patchIndexBytesArr[i] = await DownloadIndexFileIfMissingAsync(indicesDir, "patch", patchArchives[i]);
+                }
+                catch (Exception ex)
+                {
+                    patchIndexBytesArr[i] = null;
+                    Console.WriteLine($"      [Notice] Patch archive index {patchArchives[i].Substring(0, 12)}... unavailable ({ex.Message}); skipping.");
+                }
             }
 
             // Parse all data archive indices in order (0..archives.Length-1)
@@ -1112,37 +1433,88 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                 ParseArchiveIndexBuffer(indexBytesArr[a], a, dict);
             }
 
-            // Synthesize archive-group.index if missing
-            if (!string.IsNullOrWhiteSpace(archiveGroupHash))
-            {
-                string agPath = Path.Combine(indicesDir, archiveGroupHash.ToLowerInvariant() + ".index");
-                if (!File.Exists(agPath))
-                {
-                    BuildArchiveGroupIndexFile(agPath, dict);
-                }
-            }
-
-            // Synthesize patch-archive-group.index if missing
-            if (!string.IsNullOrWhiteSpace(patchArchiveGroupHash) && patchArchives.Length > 0)
-            {
-                string pagPath = Path.Combine(indicesDir, patchArchiveGroupHash.ToLowerInvariant() + ".index");
-                if (!File.Exists(pagPath))
-                {
-                    var patchDict = new Dictionary<string, ArchiveEntryLoc>(StringComparer.OrdinalIgnoreCase);
-                    for (short a = 0; a < patchArchives.Length; a++)
-                    {
-                        ParseArchiveIndexBuffer(patchIndexBytesArr[a], a, patchDict);
-                    }
-                    BuildArchiveGroupIndexFile(pagPath, patchDict);
-                }
-            }
+            // The archive-group / patch-archive-group files are derived artefacts. They are generated later by
+            // NgdpConsistency, which needs the final (possibly pruned) archive list and names the file after
+            // the MD5 of its footer, exactly like the retail client does.
 
             return dict;
         }
 
+        /// <summary>
+        /// Historical CDNConfigs only list the archives that existed at release time; Blizzard has since retired
+        /// some of them, while the live shared catalog still stores the very same chunks (e.g. the root manifest).
+        /// Merging both catalogs keeps historical builds installable.
+        /// </summary>
+        private static async Task<string[]> MergeWithSharedArchivesAsync(
+            string[] archives,
+            string buildCdnConfig,
+            string productCode,
+            string configDir,
+            Action<string> log)
+        {
+            try
+            {
+                string sharedCdnConfig = null;
+                try
+                {
+                    string versionsText = await QueryNgdpEndpointAsync("versions", productCode);
+                    sharedCdnConfig = ParseVersions(versionsText, "us")?.CdnConfig;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"      [Notice] Live versions endpoint unavailable ({ex.Message}); using default shared catalog.");
+                }
+
+                if (!IsValidHash32(sharedCdnConfig)) sharedCdnConfig = DefaultSharedCdnConfigKey;
+                if (string.Equals(sharedCdnConfig, buildCdnConfig, StringComparison.OrdinalIgnoreCase))
+                {
+                    return archives;
+                }
+
+                byte[] sharedCfgBytes = await DownloadConfigFileAsync(configDir, _cdnPath + "/config", sharedCdnConfig);
+                var sharedCfg = ParseKeyValueConfig(Encoding.UTF8.GetString(sharedCfgBytes));
+                if (!sharedCfg.TryGetValue("archives", out string sharedList))
+                {
+                    return archives;
+                }
+
+                var merged = new List<string>(archives);
+                var seen = new HashSet<string>(archives, StringComparer.OrdinalIgnoreCase);
+                int added = 0;
+                foreach (string h in sharedList.Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(IsValidHash32))
+                {
+                    // ArchiveIndex is persisted as a single byte, so the combined catalog must stay below 256 entries.
+                    if (merged.Count >= 255)
+                    {
+                        break;
+                    }
+                    if (seen.Add(h))
+                    {
+                        merged.Add(h);
+                        added++;
+                    }
+                }
+
+                if (added > 0)
+                {
+                    log($"[CASC Hybrid Engine] Federating {added} live shared archives ({sharedCdnConfig.Substring(0, 8)}...) to recover chunks retired from this build's catalog.");
+                }
+                return merged.ToArray();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"      [Notice] Could not federate the live shared archive catalog ({ex.Message}); continuing with this build's archives only.");
+                return archives;
+            }
+        }
+
         private static async Task<byte[]> DownloadIndexFileIfMissingAsync(string indicesDir, string folder, string hash)
         {
-            hash = hash.ToLowerInvariant();
+            hash = (hash ?? "").Trim().ToLowerInvariant();
+            if (!IsValidHash32(hash))
+            {
+                throw new InvalidDataException($"Refusing invalid index hash '{hash}'.");
+            }
             string localPath = Path.Combine(indicesDir, hash + ".index");
             if (File.Exists(localPath) && new FileInfo(localPath).Length > 28)
             {
@@ -1180,65 +1552,203 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             }
         }
 
-        private static void BuildArchiveGroupIndexFile(string outputPath, Dictionary<string, ArchiveEntryLoc> dict)
+        /// <summary>
+        /// Checks whether every chunk the client can ask for is present in the local storage.
+        /// The download (DL) manifest lists the encoded chunks for the Windows + installed locale tags,
+        /// which is exactly what the client resolves at runtime, so a missing entry is a real gap.
+        /// </summary>
+        private static async Task<int> VerifyCascAsync(string installRoot)
         {
-            var sorted = new List<(byte[] Key, ArchiveEntryLoc Loc)>(dict.Count);
-            foreach (var kvp in dict)
+            string buildInfoPath = Path.Combine(installRoot, ".build.info");
+            string cascDataDir = Path.Combine(installRoot, "Data", "data");
+            if (!File.Exists(buildInfoPath))
             {
-                sorted.Add((Convert.FromHexString(kvp.Key), kvp.Value));
+                Console.Error.WriteLine($"[ERROR] {buildInfoPath} not found.");
+                return 1;
             }
-            sorted.Sort((a, b) => CompareBytes(a.Key, b.Key));
-
-            const int recordsPerBlock = 163; // 4096 / 25 = 163
-            int numElements = sorted.Count;
-            int blockCount = (numElements + recordsPerBlock - 1) / recordsPerBlock;
-            int tocStart = blockCount * 4096;
-            int tocLen = blockCount * 24; // 16-byte key + 8-byte md5 per block
-            byte[] outBuf = new byte[tocStart + tocLen + 28];
-
-            using var md5 = MD5.Create();
-            int idx = 0;
-            for (int b = 0; b < blockCount; b++)
+            if (!Directory.Exists(cascDataDir))
             {
-                int bStart = b * 4096;
-                byte[] lastKey = null;
-                for (int e = 0; e < recordsPerBlock && idx < numElements; e++, idx++)
-                {
-                    int pos = bStart + e * 25;
-                    var item = sorted[idx];
-                    Buffer.BlockCopy(item.Key, 0, outBuf, pos, 16);
-                    BinaryPrimitives.WriteUInt32BigEndian(outBuf.AsSpan(pos + 16, 4), item.Loc.Size);
-                    outBuf[pos + 20] = (byte)item.Loc.ArchiveIndex;
-                    BinaryPrimitives.WriteUInt32BigEndian(outBuf.AsSpan(pos + 21, 4), item.Loc.Offset);
-                    lastKey = item.Key;
-                }
-                if (lastKey != null)
-                {
-                    Buffer.BlockCopy(lastKey, 0, outBuf, tocStart + b * 16, 16);
-                }
-                byte[] blockHash = md5.ComputeHash(outBuf, bStart, 4096);
-                Buffer.BlockCopy(blockHash, 0, outBuf, tocStart + blockCount * 16 + b * 8, 8);
+                Console.Error.WriteLine($"[ERROR] {cascDataDir} not found.");
+                return 1;
             }
 
-            int footerPos = tocStart + tocLen;
-            byte[] tocHash = md5.ComputeHash(outBuf, tocStart, tocLen);
-            Buffer.BlockCopy(tocHash, 0, outBuf, footerPos, 8);
-            outBuf[footerPos + 8] = 1;  // version
-            outBuf[footerPos + 9] = 0;  // unk0
-            outBuf[footerPos + 10] = 0; // unk1
-            outBuf[footerPos + 11] = 4; // blockSizeKB
-            outBuf[footerPos + 12] = 5; // offsetBytes (1 archive + 4 offset)
-            outBuf[footerPos + 13] = 4; // sizeBytes
-            outBuf[footerPos + 14] = 16; // keyBytes
-            outBuf[footerPos + 15] = 8;  // checksumSize
-            BinaryPrimitives.WriteUInt32LittleEndian(outBuf.AsSpan(footerPos + 16, 4), (uint)numElements);
+            string[] rows = File.ReadAllLines(buildInfoPath);
+            if (rows.Length < 2)
+            {
+                Console.Error.WriteLine("[ERROR] .build.info has no data row.");
+                return 1;
+            }
+            string[] cols = rows[1].Split('|');
+            string buildKey = cols[2].Trim().ToLowerInvariant();
+            string cdnPath = cols.Length > 6 ? cols[6].Trim().Trim('/') : "tpr/diablo3";
+            string hosts = cols.Length > 7 ? cols[7].Trim() : "";
+            _cdnPath = string.IsNullOrWhiteSpace(cdnPath) ? "tpr/diablo3" : cdnPath;
+            _cdnHosts = hosts.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Where(IsTrustedCdnHost)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (_cdnHosts.Count == 0)
+            {
+                _cdnHosts.Add("us.cdn.blizzard.com");
+                _cdnHosts.Add("blzddist1-a.akamaihd.net");
+            }
 
-            byte[] footerCheckInput = new byte[20];
-            Buffer.BlockCopy(outBuf, footerPos + 8, footerCheckInput, 0, 12);
-            byte[] footerCheck = md5.ComputeHash(footerCheckInput);
-            Buffer.BlockCopy(footerCheck, 0, outBuf, footerPos + 20, 8);
+            string cfgPath = Path.Combine(installRoot, "Data", "config", buildKey[..2], buildKey.Substring(2, 2), buildKey);
+            if (!File.Exists(cfgPath))
+            {
+                Console.Error.WriteLine($"[ERROR] Build config {buildKey} is missing from Data/config.");
+                return 1;
+            }
 
-            File.WriteAllBytes(outputPath, outBuf);
+            string locale = "enUS";
+            string launcherDb = Path.Combine(installRoot, "Launcher.db");
+            if (File.Exists(launcherDb))
+            {
+                string text = File.ReadAllText(launcherDb).Trim();
+                if (text.Length > 0 && text.Length < 16) locale = text;
+            }
+
+            var buildCfg = ParseKeyValueConfig(File.ReadAllText(cfgPath));
+            if (!buildCfg.TryGetValue("download", out string downloadField))
+            {
+                Console.Error.WriteLine("[ERROR] Build config has no download manifest reference.");
+                return 1;
+            }
+            string[] downloadHashes = downloadField.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            string ekey = downloadHashes.Length > 1 ? downloadHashes[1].ToLowerInvariant() : downloadHashes[0].ToLowerInvariant();
+
+            // Manifests are plain CDN files: locate them through every archive index already on disk.
+            // Group indexes use a wider record (footer byte 12 == 5) and must not be treated as archives.
+            var archiveIndexMap = new Dictionary<string, ArchiveEntryLoc>(StringComparer.OrdinalIgnoreCase);
+            var archiveHashes = new List<string>();
+            foreach (string idxFile in Directory.GetFiles(Path.Combine(installRoot, "Data", "indices"), "*.index"))
+            {
+                byte[] idxBytes = File.ReadAllBytes(idxFile);
+                if (idxBytes.Length < 40 || idxBytes[^16] != 4)
+                {
+                    continue;
+                }
+                archiveHashes.Add(Path.GetFileNameWithoutExtension(idxFile));
+            }
+            string[] archives = archiveHashes.ToArray();
+            for (short a = 0; a < archives.Length; a++)
+            {
+                ParseArchiveIndexBuffer(
+                    File.ReadAllBytes(Path.Combine(installRoot, "Data", "indices", archives[a] + ".index")), a, archiveIndexMap);
+            }
+            Console.WriteLine($"      Resolved {archiveIndexMap.Count:N0} chunk locations from {archives.Length} local archive indices.");
+
+            Console.WriteLine($"      Fetching download manifest {ekey.Substring(0, 8)}...");
+            byte[] rawDl = null;
+            byte[] localRecord = ReadRecordFromStorage(cascDataDir, ekey);
+            if (localRecord != null)
+            {
+                Console.WriteLine("      Read the download manifest from the local storage (no CDN needed).");
+                rawDl = localRecord;
+            }
+            else
+            {
+                rawDl = await DownloadDataBlobByEKeyAsync(ekey, archiveIndexMap, archives);
+            }
+            byte[] decDl = BlteDecoder.Decode(rawDl);
+            List<DownloadItem> items = ParseDownloadManifest(decDl, locale);
+
+            var present = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string idxFile in Directory.GetFiles(cascDataDir, "*.idx"))
+            {
+                byte[] idx = File.ReadAllBytes(idxFile);
+                if (idx.Length < 40) continue;
+                uint entriesLen = BinaryPrimitives.ReadUInt32LittleEndian(idx.AsSpan(0x20, 4));
+                int count = (int)Math.Min(entriesLen / 18u, (uint)((idx.Length - 40) / 18));
+                for (int n = 0; n < count; n++)
+                {
+                    present.Add(Convert.ToHexString(idx, 40 + n * 18, 9));
+                }
+            }
+
+            var missing = new List<string>();
+            foreach (var item in items)
+            {
+                if (!present.Contains(item.EKeyHex[..18]))
+                {
+                    missing.Add(item.EKeyHex);
+                }
+            }
+
+            Console.WriteLine($"      Storage records      : {present.Count:N0}");
+            Console.WriteLine($"      Chunks required ({locale}): {items.Count:N0}");
+            if (missing.Count == 0)
+            {
+                Console.WriteLine("[OK] CASC storage is COMPLETE: every chunk the client can request is present.");
+                return 0;
+            }
+
+            long missingBytes = 0;
+            foreach (var item in items)
+            {
+                if (missing.Contains(item.EKeyHex)) missingBytes += item.CompressedSize;
+            }
+            Console.WriteLine($"[WARNING] {missing.Count:N0} chunk(s) ({missingBytes / 1048576.0:F1} MB) are MISSING:");
+            foreach (string key in missing.Take(10))
+            {
+                Console.WriteLine($"          {key}");
+            }
+            if (missing.Count > 10)
+            {
+                Console.WriteLine($"          ... and {missing.Count - 10:N0} more");
+            }
+            return 2;
+        }
+
+        /// <summary>
+        /// Reads a BLTE chunk payload straight out of the local storage, without touching the CDN.
+        /// </summary>
+        private static byte[] ReadRecordFromStorage(string cascDataDir, string ekeyHex)
+        {
+            try
+            {
+                byte[] ekey = ParseHex16(ekeyHex);
+                if (ekey == null || ekey.Length != 16) return null;
+                byte bucket = CascHash.GetBucketIndex(ekey.AsSpan(0, 9));
+                foreach (string idxFile in Directory.GetFiles(cascDataDir, $"{bucket:x2}*.idx"))
+                {
+                    byte[] idx = File.ReadAllBytes(idxFile);
+                    if (idx.Length < 40) continue;
+                    uint entriesLen = BinaryPrimitives.ReadUInt32LittleEndian(idx.AsSpan(0x20, 4));
+                    int count = (int)Math.Min(entriesLen / 18u, (uint)((idx.Length - 40) / 18));
+                    for (int n = 0; n < count; n++)
+                    {
+                        int p = 40 + n * 18;
+                        if (!idx.AsSpan(p, 9).SequenceEqual(ekey.AsSpan(0, 9))) continue;
+
+                        ulong field = 0;
+                        for (int b = 0; b < 5; b++) field = (field << 8) | idx[p + 9 + b];
+                        uint archive = (uint)(field >> 30);
+                        uint offset = (uint)(field & 0x3FFFFFFFu);
+                        uint size = BinaryPrimitives.ReadUInt32LittleEndian(idx.AsSpan(p + 14, 4));
+                        if (size < 30) return null;
+
+                        string dataPath = Path.Combine(cascDataDir, $"data.{archive:D3}");
+                        if (!File.Exists(dataPath)) return null;
+                        using var stream = File.OpenRead(dataPath);
+                        stream.Position = offset;
+                        byte[] buffer = new byte[size];
+                        int read = 0;
+                        while (read < buffer.Length)
+                        {
+                            int chunk = stream.Read(buffer, read, buffer.Length - read);
+                            if (chunk <= 0) return null;
+                            read += chunk;
+                        }
+                        return buffer.AsSpan(30).ToArray();
+                    }
+                }
+            }
+            catch
+            {
+                // Fall back to the CDN path when the local storage cannot satisfy the lookup.
+            }
+            return null;
         }
 
         private static int CompareBytes(byte[] a, byte[] b)
@@ -1469,15 +1979,17 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             string installCKey)
         {
             string buildInfoPath = Path.Combine(targetDir, ".build.info");
-            string hostsJoined = string.Join(" ", cdn.Hosts);
+            string hostsJoined = string.Join(" ", (cdn.Hosts ?? Array.Empty<string>()).Where(IsTrustedCdnHost));
             string serversJoined = string.IsNullOrWhiteSpace(cdn.Servers)
-                ? "http://level3.blizzard.com/?maxhosts=4 http://us.cdn.blizzard.com/?maxhosts=4 https://level3.ssl.blizzard.com/?maxhosts=4&fallback=1 https://us.cdn.blizzard.com/?maxhosts=4&fallback=1"
+                ? "https://level3.blizzard.com/?maxhosts=4 https://us.cdn.blizzard.com/?maxhosts=4 https://level3.ssl.blizzard.com/?maxhosts=4&fallback=1 https://us.cdn.blizzard.com/?maxhosts=4&fallback=1"
                 : cdn.Servers;
             string tags = $"Windows {region.ToUpperInvariant()}? acct-USA? geoip-US? {locale} speech?:Windows {region.ToUpperInvariant()}? acct-USA? geoip-US? {locale} text?";
 
             var sb = new StringBuilder();
             sb.AppendLine("Branch!STRING:0|Active!DEC:1|Build Key!HEX:16|CDN Key!HEX:16|Install Key!HEX:16|IM Size!DEC:4|CDN Path!STRING:0|CDN Hosts!STRING:0|CDN Servers!STRING:0|Tags!STRING:0|Armadillo!STRING:0|Last Activated!STRING:0|Version!STRING:0|KeyRing!HEX:16|Product!STRING:0");
-            sb.AppendLine($"{region}|1|{ver.BuildConfig}|{ver.CdnConfig}|{installCKey.ToLowerInvariant()}||{cdn.Path}|{hostsJoined}|{serversJoined}|{tags}|||{ver.VersionsName}|{ver.KeyRing}|");
+            // Blizzard leaves "Install Key" empty in locally deployed storages; the client validates it
+            // during storage open and rejects the storage (E_STORAGE_INIT) when it is filled in.
+            sb.AppendLine($"{region}|1|{ver.BuildConfig}|{ver.CdnConfig}|||{cdn.Path}|{hostsJoined}|{serversJoined}|{tags}|||{ver.VersionsName}|{ver.KeyRing}|");
             File.WriteAllText(buildInfoPath, sb.ToString(), Encoding.ASCII);
 
             string launcherDbPath = Path.Combine(targetDir, "Launcher.db");
@@ -1509,7 +2021,7 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                 await sem.WaitAsync();
                 try
                 {
-                    string outPath = Path.Combine(targetDir, item.RelativePath);
+                    string outPath = SafePathUnder(targetDir, item.RelativePath);
                     Directory.CreateDirectory(Path.GetDirectoryName(outPath));
 
                     if (File.Exists(outPath) && new FileInfo(outPath).Length == item.UncompressedSize)
@@ -1579,8 +2091,8 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             // 1. Try localArchiveSource if specified
             if (!string.IsNullOrWhiteSpace(localArchiveSource) && Directory.Exists(localArchiveSource))
             {
-                string candidate = Path.Combine(localArchiveSource, item.RelativePath);
-                if (File.Exists(candidate))
+                string candidate = TrySafePathUnder(localArchiveSource, item.RelativePath);
+                if (candidate != null && File.Exists(candidate))
                 {
                     byte[] b = await File.ReadAllBytesAsync(candidate);
                     if (VerifyFileCKey(b, item.CKey)) return b;
@@ -1600,7 +2112,9 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             }
 
             // 3. If selectedBuild has a BinaryDeltaUrl configured, download Option B zip package on demand
-            if (selectedBuild != null && !string.IsNullOrWhiteSpace(selectedBuild.BinaryDeltaUrl))
+            if (selectedBuild != null
+                && Uri.TryCreate(selectedBuild.BinaryDeltaUrl, UriKind.Absolute, out Uri deltaUri)
+                && deltaUri.Scheme == Uri.UriSchemeHttps)
             {
                 try
                 {
@@ -1610,7 +2124,7 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                     {
                         Console.WriteLine($"      [Option B] Downloading verified clean binary package from {selectedBuild.BinaryDeltaUrl}...");
                         using var client = new HttpClient();
-                        byte[] zipBytes = await client.GetByteArrayAsync(selectedBuild.BinaryDeltaUrl);
+                        byte[] zipBytes = await client.GetByteArrayAsync(deltaUri);
                         await File.WriteAllBytesAsync(zipTarget, zipBytes);
                         Console.WriteLine($"      [Option B] Binary package cached ({zipBytes.Length / 1048576.0:F1} MB).");
                     }
@@ -1637,8 +2151,8 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             {
                 if (Directory.Exists(dir))
                 {
-                    string candidate = Path.Combine(dir, item.RelativePath);
-                    if (File.Exists(candidate))
+                    string candidate = TrySafePathUnder(dir, item.RelativePath);
+                    if (candidate != null && File.Exists(candidate))
                     {
                         byte[] b = await File.ReadAllBytesAsync(candidate);
                         if (VerifyFileCKey(b, item.CKey))
@@ -1733,7 +2247,7 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             public List<ArchiveSlice> Slices = new();
         }
 
-        private static async Task DownloadAndWriteCascEntriesAsync(
+        private static async Task<int> DownloadAndWriteCascEntriesAsync(
             CascStorageWriter cascWriter,
             List<DownloadItem> items,
             Dictionary<string, ArchiveEntryLoc> archiveIndexMap,
@@ -1741,6 +2255,7 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             int maxConcurrency,
             Action<double, string> onProgress = null)
         {
+            int skippedChunks = 0;
             var perArchive = new List<ArchiveSlice>[archives.Length];
             for (int i = 0; i < archives.Length; i++) perArchive[i] = new List<ArchiveSlice>();
             var looseItems = new List<DownloadItem>();
@@ -1844,12 +2359,31 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                 {
                     string archHash = archives[job.ArchiveIndex].ToLowerInvariant();
                     string rel = $"{_cdnPath}/data/{archHash.Substring(0, 2)}/{archHash.Substring(2, 2)}/{archHash}";
-                    byte[] rangeBuf = await DownloadFromCdnAsync(rel, job.RangeStart, job.RangeEnd);
+
+                    byte[] rangeBuf;
+                    try
+                    {
+                        rangeBuf = await DownloadFromCdnAsync(rel, job.RangeStart, job.RangeEnd);
+                    }
+                    catch (Exception ex)
+                    {
+                        // A retired archive no longer serves its chunks; keep assembling the rest of the CASC storage.
+                        Console.WriteLine($"      [Notice] Archive {archHash.Substring(0, 12)}... unavailable ({ex.Message}); skipped {job.Slices.Count} chunk(s).");
+                        Interlocked.Add(ref skippedChunks, job.Slices.Count);
+                        ReportProgress(job.Slices.Count, 0);
+                        return;
+                    }
 
                     long logicalBytes = 0;
                     foreach (var slice in job.Slices)
                     {
                         int relOffset = (int)(slice.Offset - job.RangeStart);
+                        if (relOffset < 0 || relOffset + (int)slice.Size > rangeBuf.Length)
+                        {
+                            Console.WriteLine($"      [Notice] Incomplete archive response for chunk {slice.EKeyHex}; skipped.");
+                            Interlocked.Increment(ref skippedChunks);
+                            continue;
+                        }
                         cascWriter.WriteEntry(slice.EKeyBytes, rangeBuf, relOffset, (int)slice.Size);
                         logicalBytes += slice.Size;
                     }
@@ -1881,6 +2415,7 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                     {
                         // Some historical loose chunks may have been purged or relocated; log notice so archive assembly succeeds
                         Console.WriteLine($"      [Notice] Non-critical loose chunk {item.EKeyHex} skipped ({ex.Message}).");
+                        Interlocked.Increment(ref skippedChunks);
                         ReportProgress(1, 0);
                     }
                 }
@@ -1892,6 +2427,16 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
 
             await Task.WhenAll(looseTasks);
             ReportProgress(0, 0, force: true);
+
+            if (skippedChunks > 0)
+            {
+                Console.WriteLine($"      [WARNING] CASC storage is INCOMPLETE: {skippedChunks:N0} of {items.Count:N0} chunks could not be downloaded (Blizzard retired their archives). The game may hang or crash when it loads those specific assets.");
+            }
+            else
+            {
+                Console.WriteLine($"      [OK] CASC storage complete: all {items.Count:N0} chunks were written and hash-verified.");
+            }
+            return skippedChunks;
         }
 
         private static byte[] ParseHex16(string hex) => Convert.FromHexString(hex);
@@ -1916,8 +2461,12 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             }
 
             int chunkCount = (content[9] << 16) | (content[10] << 8) | content[11];
+            if (chunkCount <= 0 || chunkCount > 1_000_000)
+                throw new InvalidDataException("Invalid BLTE chunk count.");
+
             var compSizes = new int[chunkCount];
             var decompSizes = new int[chunkCount];
+            var chunkHashes = new byte[chunkCount][];
             long totalDecomp = 0;
 
             int pos = 12;
@@ -1925,17 +2474,42 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             {
                 compSizes[i] = BinaryPrimitives.ReadInt32BigEndian(content.AsSpan(pos, 4));
                 decompSizes[i] = BinaryPrimitives.ReadInt32BigEndian(content.AsSpan(pos + 4, 4));
+                if (compSizes[i] < 0 || decompSizes[i] < 0)
+                    throw new InvalidDataException("Invalid BLTE chunk sizes.");
+                chunkHashes[i] = content.AsSpan(pos + 8, 16).ToArray();
                 totalDecomp += decompSizes[i];
                 pos += 24; // 4 comp + 4 decomp + 16 md5
             }
 
-            using var result = new MemoryStream((int)Math.Min(totalDecomp, int.MaxValue));
+            if (totalDecomp > int.MaxValue)
+                throw new InvalidDataException("BLTE payload is too large.");
+
+            using var result = new MemoryStream((int)totalDecomp);
             for (int i = 0; i < chunkCount; i++)
             {
+                if (pos + compSizes[i] > content.Length)
+                    throw new InvalidDataException("BLTE chunk exceeds the buffer boundaries.");
+
+                // Every chunk carries its own MD5 so truncated/corrupted downloads are rejected early.
+                if (!IsZeroHash(chunkHashes[i]) && !MD5.HashData(content.AsSpan(pos, compSizes[i])).AsSpan().SequenceEqual(chunkHashes[i]))
+                    throw new InvalidDataException("BLTE chunk checksum mismatch (corrupted or tampered download).");
+
+                long before = result.Length;
                 DecodeChunk(content, pos, compSizes[i], result);
+                if (result.Length - before != decompSizes[i])
+                    throw new InvalidDataException("BLTE chunk decompressed to an unexpected size.");
                 pos += compSizes[i];
             }
             return result.ToArray();
+        }
+
+        private static bool IsZeroHash(byte[] hash)
+        {
+            foreach (byte b in hash)
+            {
+                if (b != 0) return false;
+            }
+            return true;
         }
 
         private static void DecodeChunk(byte[] buf, int offset, int length, MemoryStream output)
@@ -2220,15 +2794,142 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             _currentStream?.Dispose();
             _currentStream = null;
 
+            WriteIndexFiles(_cascDataDir, _buckets, Enumerable.Repeat(1u, 16).ToArray());
+            WriteShmem(_cascDataDir, Enumerable.Repeat(1u, 16).ToArray());
+        }
+
+        /// <summary>
+        /// Rebuilds the 16 .idx files and shmem from the data.NNN archives already on disk.
+        /// This repairs a storage whose indexes were destroyed (for example by an interrupted
+        /// client repair) without downloading the content again.
+        /// </summary>
+        internal static int RebuildFromExisting(string cascDataDir, Action<string> log, bool keepShmem = false)
+        {
+            if (!Directory.Exists(cascDataDir))
+                throw new DirectoryNotFoundException($"CASC data folder not found: {cascDataDir}");
+
+            // Reuse the index versions recorded in an existing shmem (the client bumps them when it resets a storage).
+            uint[] idxVersions = null;
+            string shmemPath = Path.Combine(cascDataDir, "shmem");
+            if (File.Exists(shmemPath))
+            {
+                byte[] existing = File.ReadAllBytes(shmemPath);
+                if (existing.Length >= 0x150)
+                {
+                    var versions = new uint[16];
+                    bool valid = true;
+                    for (int i = 0; i < 16; i++)
+                    {
+                        uint v = BinaryPrimitives.ReadUInt32LittleEndian(existing.AsSpan(0x110 + i * 4, 4));
+                        if (v == 0 || v >= 0x1000000) { valid = false; break; }
+                        versions[i] = v;
+                    }
+                    if (valid)
+                    {
+                        idxVersions = versions;
+                        log($"      Reusing the 16 index versions from the existing shmem.");
+                    }
+                }
+            }
+            idxVersions ??= Enumerable.Repeat(1u, 16).ToArray();
+
+            string[] dataFiles = Directory.GetFiles(cascDataDir, "data.*")
+                .Where(p => System.Text.RegularExpressions.Regex.IsMatch(Path.GetFileName(p), @"^data\.\d{3}$",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                .OrderBy(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            if (dataFiles.Length == 0)
+                throw new InvalidDataException($"No data.NNN archives found in {cascDataDir}");
+
+            var buckets = new List<IdxRecord>[16];
+            for (int i = 0; i < 16; i++) buckets[i] = new List<IdxRecord>(20000);
+            var records = new List<(string Hex, byte[] Key9, ushort Archive, uint Offset, uint Size)>(350000);
+            var indexOfKey = new Dictionary<string, int>(350000, StringComparer.OrdinalIgnoreCase);
+            var header = new byte[30];
+            long totalRecords = 0;
+
+            foreach (string file in dataFiles)
+            {
+                ushort archiveIndex = ushort.Parse(Path.GetFileName(file).Substring(5));
+                long length = new FileInfo(file).Length;
+                using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 1024 * 1024, FileOptions.SequentialScan);
+                long offset = 0;
+                int bad = 0;
+                while (offset + 30 <= length)
+                {
+                    stream.Position = offset;
+                    if (stream.Read(header, 0, 30) != 30) break;
+                    uint size = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(16, 4));
+                    if (size < 30 || offset + size > length)
+                    {
+                        if (bad++ < 3)
+                            log($"      [warn] {Path.GetFileName(file)}: invalid record size {size} at offset {offset}; skipping remainder.");
+                        break;
+                    }
+
+                    // The storage keeps the encoded key byte-reversed.
+                    byte[] key9 = new byte[9];
+                    for (int i = 0; i < 9; i++) key9[i] = header[15 - i];
+                    string keyHex = Convert.ToHexString(key9);
+                    // Duplicate keys keep the newest copy, matching what the client's own writer produces.
+                    if (indexOfKey.TryGetValue(keyHex, out int existing))
+                    {
+                        records[existing] = (keyHex, key9, archiveIndex, (uint)offset, size);
+                    }
+                    else
+                    {
+                        indexOfKey[keyHex] = records.Count;
+                        records.Add((keyHex, key9, archiveIndex, (uint)offset, size));
+                        totalRecords++;
+                    }
+                    offset += size;
+                }
+                log($"      {Path.GetFileName(file)}: {length / 1048576.0:F0} MB scanned (next offset {offset}).");
+            }
+
+            foreach (var rec in records)
+            {
+                // Cross-link header records (the 16 at offsets 0..479 of each archive) live one bucket
+                // above the bucket their key hashes to; every other record lives in its hash bucket.
+                byte bucket = CascHash.GetBucketIndex(rec.Key9);
+                if (rec.Offset < 480 && rec.Size == 30)
+                {
+                    bucket = (byte)((bucket + 1) & 0x0F);
+                }
+                buckets[bucket].Add(new IdxRecord(rec.Key9, rec.Archive, rec.Offset, rec.Size));
+            }
+
+            foreach (var stale in Directory.GetFiles(cascDataDir, "*.idx")) { try { File.Delete(stale); } catch { } }
+            foreach (var stale in Directory.GetFiles(cascDataDir, "*.mrk")) { try { File.Delete(stale); } catch { } }
+
+            WriteIndexFiles(cascDataDir, buckets, idxVersions);
+            if (!keepShmem)
+            {
+                WriteShmem(cascDataDir, idxVersions);
+            }
+            else
+            {
+                log("      Keeping the existing shmem (client-generated layout).");
+            }
+            return (int)Math.Min(totalRecords, int.MaxValue);
+        }
+
+        internal static void WriteIndexFiles(string cascDataDir, List<IdxRecord>[] buckets, uint[] idxVersions)
+        {
+            foreach (string stale in Directory.GetFiles(cascDataDir, "*.idx"))
+            {
+                try { File.Delete(stale); } catch { }
+            }
             for (byte b = 0; b < 16; b++)
             {
-                var list = _buckets[b];
+                var list = buckets[b];
                 list.Sort();
 
                 uint entriesBytesLen = (uint)(list.Count * 18);
                 int rawLen = 40 + (int)entriesBytesLen;
-                // Pad to 64 KB boundary (minimum 65536 bytes) just like Battle.net Agent
-                int paddedLen = Math.Max(65536, (rawLen + 65535) & ~65535);
+                // The client expects the file to be the entry table rounded up to 4 KB plus a 32 KB
+                // zero-filled reserve; a shorter file makes it reject the whole storage.
+                int paddedLen = ((rawLen + 4095) & ~4095) + 8 * 4096;
                 byte[] idxBuf = new byte[paddedLen];
 
                 BinaryPrimitives.WriteUInt32LittleEndian(idxBuf.AsSpan(0, 4), 16u); // HeaderHashSize
@@ -2239,7 +2940,7 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                 idxBuf[13] = 5;                                                     // SpanOffsBytes
                 idxBuf[14] = 9;                                                     // KeyBytes
                 idxBuf[15] = 30;                                                    // SegmentBits
-                BinaryPrimitives.WriteUInt64LittleEndian(idxBuf.AsSpan(16, 8), 0x4000000000UL); // 256 GiB max
+                BinaryPrimitives.WriteUInt64LittleEndian(idxBuf.AsSpan(16, 8), 0xFFC0000000UL); // MaxFileOffset (Blizzard constant)
 
                 uint hdrPc = 0, hdrPb = 0;
                 CascHash.HashLittle2(idxBuf.AsSpan(8, 16), ref hdrPc, ref hdrPb);
@@ -2262,20 +2963,18 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                 }
                 BinaryPrimitives.WriteUInt32LittleEndian(idxBuf.AsSpan(36, 4), entPc);
 
-                string idxPath = Path.Combine(_cascDataDir, $"{b:x2}00000001.idx");
+                string idxPath = Path.Combine(cascDataDir, $"{b:x2}{idxVersions[b]:x8}.idx");
                 File.WriteAllBytes(idxPath, idxBuf);
             }
-
-            WriteShmemFile();
         }
 
-        private void WriteShmemFile()
+        internal static void WriteShmem(string cascDataDir, uint[] idxVersions)
         {
             byte[] shmem = new byte[20480];
             BinaryPrimitives.WriteUInt32LittleEndian(shmem.AsSpan(0, 4), 5u);      // BlockType = 5
             BinaryPrimitives.WriteUInt32LittleEndian(shmem.AsSpan(4, 4), 0x0154u); // NextBlock = 340
 
-            string normalizedPath = Path.GetFullPath(_cascDataDir).Replace('\\', '/');
+            string normalizedPath = Path.GetFullPath(cascDataDir).Replace('\\', '/');
             if (normalizedPath.Length >= 2 && normalizedPath[1] == ':')
             {
                 normalizedPath = char.ToLowerInvariant(normalizedPath[0]) + normalizedPath.Substring(1);
@@ -2286,10 +2985,10 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             BinaryPrimitives.WriteUInt32LittleEndian(shmem.AsSpan(0x0108, 4), 0x2AB8u);
             BinaryPrimitives.WriteUInt32LittleEndian(shmem.AsSpan(0x010C, 4), 0x1000u);
 
-            // 16 .idx versions (all version 1)
+            // 16 .idx versions
             for (int i = 0; i < 16; i++)
             {
-                BinaryPrimitives.WriteUInt32LittleEndian(shmem.AsSpan(0x0110 + i * 4, 4), 1u);
+                BinaryPrimitives.WriteUInt32LittleEndian(shmem.AsSpan(0x0110 + i * 4, 4), idxVersions[i]);
             }
 
             BinaryPrimitives.WriteUInt32LittleEndian(shmem.AsSpan(0x0150, 4), 2u);
@@ -2297,7 +2996,7 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             BinaryPrimitives.WriteUInt32LittleEndian(shmem.AsSpan(0x0158, 4), 0x0228u);
             BinaryPrimitives.WriteUInt32LittleEndian(shmem.AsSpan(0x01D8, 4), 0x4000u);
 
-            File.WriteAllBytes(Path.Combine(_cascDataDir, "shmem"), shmem);
+            File.WriteAllBytes(Path.Combine(cascDataDir, "shmem"), shmem);
         }
 
         public void Dispose()
