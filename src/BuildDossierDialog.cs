@@ -252,6 +252,14 @@ namespace D3Downloader
             AppendBullet($"Edition: {(build.IsRoS ? "Reaper of Souls (Expansion)" : "Vanilla Classic")}");
             AppendBullet($"Category: {build.Category}");
             AppendBullet($"Architecture: {(build.IsCasc ? "Modern 64-bit CASC Content Pipeline" : "Legacy 32-bit MPQ Archive with PTCH Deltas")}");
+            if (build.IsCasc && !string.IsNullOrEmpty(build.BuildConfigHash))
+            {
+                AppendBullet($"Blizzard BuildConfig: {build.BuildConfigHash}");
+                if (!string.IsNullOrEmpty(build.CdnConfigHash))
+                {
+                    AppendBullet($"Blizzard CDNConfig: {build.CdnConfigHash}");
+                }
+            }
             AppendBullet($"Blizzard Base Node: {build.BaseDirectUrl}");
             AppendBullet($"Blizzard Manifest: {(string.IsNullOrEmpty(build.MfilFileName) ? "CASC Build.info" : build.MfilFileName)}");
             AppendBullet($"Official Release Date: {build.ReleaseDate}");

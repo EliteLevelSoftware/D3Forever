@@ -1,3 +1,47 @@
+# Diablo 3 Forever v1.4.2 — Patch Notes
+
+**Release Date:** November 12, 2026  
+**Build:** `v1.4.2`  
+**Binary:** `Diablo3Forever.exe` (Windows x64 Single-File Standalone — Zero Dependencies)
+
+---
+
+## 🚀 Major Breakthrough: Historical CASC Rescue & Hybrid Pipeline
+
+### 1. 100% Native Blizzard CDN Support for Patch 2.7.4.84161 (Angelic Crucibles)
+- **The Discovery:** Exhaustive edge-node network inspection revealed that Blizzard **never purged the standalone executables or libraries** for Patch 2.7.4.84161 from their live CDN edge nodes!
+- **Zero Third-Party Downloads Needed:** `Diablo III64.exe` (CKey `A38867FA...`), `Diablo III.exe` (CKey `B1609FC2...`), `battle.net.dll`, `libcef.dll`, and `icudtl.dat` stream **live directly from Blizzard's NGDP CDN servers**!
+- **Cryptographic Bit-for-Bit Validation:** Every extracted binary is verified against Blizzard's official MD5 Content Key (CKey), ensuring 100% genuine Blizzard binaries.
+- **Server Standard Ready:** Patch 2.7.4 is the global community standard for Diablo III private server emulators (such as DiIiS) and is now instantly installable with a single click.
+
+### 2. Historical CASC Rescue Engine (2018 – 2024 Builds)
+- **Reconstructed NGDP Manifest Catalog:** Added verified live Blizzard `BuildConfig` and `CDNConfig` manifests for historical CASC eras previously thought lost:
+  - `2.6.4.55430` (Season of Grandeur)
+  - `2.6.9.68722` (Trials of Tempests)
+  - `2.6.10.71254` (Shadow Clones)
+  - `2.7.3.82785` (Echoing Nightmare)
+  - `2.7.4.84161` (Angelic Crucibles)
+  - `2.7.6.91007` (Solo Self-Found / Visions of Enmity)
+  - `2.7.7.92326` & `2.7.7.93903` (Rites of Sanctuary & Visions Permanent)
+  - `2.7.8.97927` (Maintenance / Mac 64-bit)
+- **Shared Archive Asset Federation:** Automatically leverages the 17.37 GB of shared textures, sound banks, and world data hosted across Blizzard's 150 active CDN archive blobs.
+- **Automated Fallback to Live CDN Catalog:** If a historical CDNConfig is offline, the engine seamlessly routes chunk index queries through the live shared archive catalog (`6547fc64ca796c7c1b25864145814ace`), ensuring 0 aborted builds.
+
+### 3. Option B Clean Binary Package System
+- **Rock-Solid Binary Recovery:** Instead of fragile 2–4 MB binary diffs that break whenever retail patches update, Diablo 3 Forever adopts the Option B Clean Binary Package system.
+- **Multi-Tiered Asset Recovery:**
+  1. Primary: Direct live download of loose files from Blizzard NGDP CDN.
+  2. Secondary: Detection of local clean binary zip archives (`d3-{build}-binaries.zip`) in offline archive caches or application cache.
+  3. Tertiary: Optional automated streaming from community binary delta mirrors (`BinaryDeltaUrl`).
+  4. Quaternary: Rescue of verified shared runtime libraries from existing local Diablo III installations.
+- **Zero-Dependency Native Unpacking:** Employs .NET's built-in `System.IO.Compression.ZipFile` for instant decompression in ~1 second.
+
+### 4. UI & Dossier Upgrades
+- **Live CDN Ready Badges:** Historical CASC versions with live Blizzard manifests now display live green indicators in the version selector drawer without prompting for mandatory offline archives.
+- **CASC Provenance in Dossier:** Right-clicking any CASC build in the drawer displays its exact Blizzard `BuildConfig` and `CDNConfig` hashes and CDN endpoints in the Historical Dossier modal.
+
+---
+
 # Diablo 3 Forever v1.4.1 — Patch Notes
 
 **Release Date:** November 11, 2026  

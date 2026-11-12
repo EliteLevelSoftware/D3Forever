@@ -35,16 +35,21 @@ namespace D3Downloader
         public int BaseBuildNumber { get; init; } = 8370;
         public string CdnConfigUrl { get; init; }
         public bool RequiresOfflineArchive { get; init; } = false;
+        public string BuildConfigHash { get; init; }
+        public string CdnConfigHash { get; init; }
+        public string BinaryDeltaUrl { get; init; }
 
         public string CheckUrl => RequiresOfflineArchive
             ? ""
             : (!string.IsNullOrEmpty(CdnConfigUrl)
                 ? CdnConfigUrl
-                : (IsCasc
-                    ? $"http://us.patch.battle.net:1119/{ProductCode}/versions"
-                    : (BuildNumber > BaseBuildNumber
-                        ? $"{BaseDirectUrl}/Updates/d3-0-{BuildNumber}-Win-final.MPQ"
-                        : $"{BaseDirectUrl}/Data_D3/PC/MPQs/base-Win.mpq")));
+                : (!string.IsNullOrEmpty(BuildConfigHash)
+                    ? $"http://us.cdn.blizzard.com/tpr/diablo3/config/{BuildConfigHash.Substring(0, 2)}/{BuildConfigHash.Substring(2, 2)}/{BuildConfigHash}"
+                    : (IsCasc
+                        ? $"http://us.patch.battle.net:1119/{ProductCode}/versions"
+                        : (BuildNumber > BaseBuildNumber
+                            ? $"{BaseDirectUrl}/Updates/d3-0-{BuildNumber}-Win-final.MPQ"
+                            : $"{BaseDirectUrl}/Data_D3/PC/MPQs/base-Win.mpq"))));
 
         public string DisplayTitle => IsCasc
             ? $"{Version}.{BuildNumber} — [CASC / {ProductCode} 64-bit] ({Summary})"
@@ -72,14 +77,17 @@ namespace D3Downloader
             // =========================================================================
             // REAPER OF SOULS Ã¢â‚¬â€ RETAIL CATEGORY
             // =========================================================================
-            new() { Version = "2.8.0", BuildNumber = 99920, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "Live Retail", Summary = "Global Live Retail Client (64-bit CASC)" },
-            new() { Version = "2.8.1", BuildNumber = 101167, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3cn", ReleaseDate = "CN CDN", Summary = "Patch 2.8.1 Production Client (64-bit CASC)" },
-            new() { Version = "2.7.8", BuildNumber = 97927, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-09-10", Summary = "Patch 2.7.8 Post-Loc Production Build", RequiresOfflineArchive = true, CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/3c/08/3c08a11365511a36115399741311d6a1" },
-            new() { Version = "2.7.7", BuildNumber = 93903, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-02-06", Summary = "Patch 2.7.7a Production Release Candidate 2", RequiresOfflineArchive = true, CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/0e/49/0e49135ccc3ae6496e78c92e280da93f" },
-            new() { Version = "2.7.7", BuildNumber = 92326, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-01-09", Summary = "Patch 2.7.7 Production Release Candidate 1", RequiresOfflineArchive = true, CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/ef/5d/ef5defe7bbf218a323336273c86be31c" },
-            new() { Version = "2.7.6", BuildNumber = 91007, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2023-09-12", Summary = "Patch 2.7.6 Solo Self-Found Update (64-bit CASC)", RequiresOfflineArchive = true, CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/80/70/8070cfaf79f4ce7338a895fff28b135d" },
-            new() { Version = "2.7.4", BuildNumber = 84161, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2022-08-23", Summary = "Patch 2.7.4 Angelic Crucibles Update (64-bit CASC)", RequiresOfflineArchive = true, CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/51/94/5194054cfa6480884c9a451b6f1107a3" },
-            new() { Version = "2.7.3", BuildNumber = 82785, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3cn", ReleaseDate = "2022-04-12", Summary = "Patch 2.7.3 Echoing Nightmare Client (64-bit CASC)", RequiresOfflineArchive = true, CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/ce/be/cebe6c6f58867665a442156284766fd2" },
+            new() { Version = "2.8.0", BuildNumber = 99920, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "Live Retail", Summary = "Global Live Retail Client (64-bit CASC)", BuildConfigHash = "e34fc3fb7831a77e0ad7def0bb399ac7", CdnConfigHash = "6547fc64ca796c7c1b25864145814ace", RequiresOfflineArchive = false },
+            new() { Version = "2.8.1", BuildNumber = 101167, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3cn", ReleaseDate = "CN CDN", Summary = "Patch 2.8.1 Production Client (64-bit CASC)", BuildConfigHash = "a3cf75f3a099fffa3628e9d6dae762c9", CdnConfigHash = "6547fc64ca796c7c1b25864145814ace", RequiresOfflineArchive = false },
+            new() { Version = "2.7.8", BuildNumber = 97927, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-09-10", Summary = "Patch 2.7.8 Post-Loc Production Build (Hybrid CASC)", BuildConfigHash = "3c08a11365511a36115399741311d6a1", CdnConfigHash = "04c804438ffe247c4b310951a48a2ac7", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/3c/08/3c08a11365511a36115399741311d6a1", RequiresOfflineArchive = false },
+            new() { Version = "2.7.7", BuildNumber = 93903, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-02-06", Summary = "Patch 2.7.7a Production Release Candidate 2 (Hybrid CASC)", BuildConfigHash = "0e49135ccc3ae6496e78c92e280da93f", CdnConfigHash = "3551b8cd22795a223fd8d268bb14d3ba", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/0e/49/0e49135ccc3ae6496e78c92e280da93f", RequiresOfflineArchive = false },
+            new() { Version = "2.7.7", BuildNumber = 92326, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2024-01-09", Summary = "Patch 2.7.7 Production Release Candidate 1 (Hybrid CASC)", BuildConfigHash = "ef5defe7bbf218a323336273c86be31c", CdnConfigHash = "c0de265ca1f1cb28d17566ae7c4e6625", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/ef/5d/ef5defe7bbf218a323336273c86be31c", RequiresOfflineArchive = false },
+            new() { Version = "2.7.6", BuildNumber = 91007, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2023-09-12", Summary = "Patch 2.7.6 Solo Self-Found Update (Hybrid CASC)", BuildConfigHash = "8070cfaf79f4ce7338a895fff28b135d", CdnConfigHash = "2cc7d028bf14c9f9806dc395646a62e7", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/80/70/8070cfaf79f4ce7338a895fff28b135d", RequiresOfflineArchive = false },
+            new() { Version = "2.7.4", BuildNumber = 84161, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2022-08-23", Summary = "Patch 2.7.4 Angelic Crucibles (Live CDN + Server Standard)", BuildConfigHash = "5194054cfa6480884c9a451b6f1107a3", CdnConfigHash = "3233a305369813698170265c3ac8a5cf", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/51/94/5194054cfa6480884c9a451b6f1107a3", RequiresOfflineArchive = false },
+            new() { Version = "2.7.3", BuildNumber = 82785, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3cn", ReleaseDate = "2022-04-12", Summary = "Patch 2.7.3 Echoing Nightmare Client (64-bit CASC)", BuildConfigHash = "cebe6c6f58867665a442156284766fd2", CdnConfigHash = "3ba10fda121be96dd67e23aa7447f057", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/ce/be/cebe6c6f58867665a442156284766fd2", RequiresOfflineArchive = false },
+            new() { Version = "2.6.10", BuildNumber = 71254, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2020-11-10", Summary = "Patch 2.6.10 Shadow Clones (Hybrid CASC)", BuildConfigHash = "f73d98ce9ae0152fb1d6a972669c17c6", CdnConfigHash = "bf6b945936d6269c9b137d0530f9d806", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/f7/3d/f73d98ce9ae0152fb1d6a972669c17c6", RequiresOfflineArchive = false },
+            new() { Version = "2.6.9", BuildNumber = 68722, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2020-06-23", Summary = "Patch 2.6.9 Trials of Tempests (Hybrid CASC)", BuildConfigHash = "17992473d8a335eb5a7fed6699462db8", CdnConfigHash = "bf6b945936d6269c9b137d0530f9d806", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/17/99/17992473d8a335eb5a7fed6699462db8", RequiresOfflineArchive = false },
+            new() { Version = "2.6.4", BuildNumber = 55430, IsCasc = true, IsRoS = true, Category = D3BuildCategory.Retail, ProductCode = "d3", ReleaseDate = "2019-01-15", Summary = "Patch 2.6.4 Season of Grandeur (Hybrid CASC)", BuildConfigHash = "a6b0c93f4726cafe427b3d4391a14a9e", CdnConfigHash = "eacd8570d54d4cbd1c829ee3ccc49257", CdnConfigUrl = "http://us.cdn.blizzard.com/tpr/diablo3/config/a6/b0/a6b0c93f4726cafe427b3d4391a14a9e", RequiresOfflineArchive = false },
             new() { Version = "2.1.2", BuildNumber = 28709, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = RosMfilFileName, ReleaseDate = "2015-01-13", Summary = "Patch 2.1.2 (Ancient Items, Conduit Pylon Rework)" },
             new() { Version = "2.1.1", BuildNumber = 27255, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-27255-35F65D5686569C9A188AC0264ED26583.mfil", ReleaseDate = "2014-09-23", Summary = "Patch 2.1.1 (Kadala Bloodshard Costs, Pet Toughness)" },
             new() { Version = "2.1.0", BuildNumber = 26451, IsCasc = false, IsRoS = true, Category = D3BuildCategory.Retail, BaseBuildNumber = 20813, BaseDirectUrl = RosDirectBaseUrl, MfilFileName = "d3-26451-6032812D57D4CE684194552583B4275F.mfil", ReleaseDate = "2014-08-26", Summary = "Major Update (Greater Rifts, Legendary Gems, The Vault)" },
