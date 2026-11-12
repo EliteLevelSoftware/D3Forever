@@ -202,6 +202,7 @@ namespace D3Downloader
             {
                 await UpdateChecker.ApplyUpdateAsync(
                     _info.DownloadUrl,
+                    _info.ChecksumUrl,
                     (pct, status) =>
                     {
                         if (InvokeRequired)

@@ -11,13 +11,12 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>Diablo3Forever</AssemblyName>
     <Product>Diablo 3 Forever</Product>
     <AssemblyTitle>Diablo 3 Forever</AssemblyTitle>
-    <Version>1.4.2</Version>
-    <AssemblyVersion>1.4.2</AssemblyVersion>
-    <FileVersion>1.4.2</FileVersion>
+    <Version>1.4.4</Version>
+    <AssemblyVersion>1.4.4</AssemblyVersion>
+    <FileVersion>1.4.4</FileVersion>
     <ApplicationIcon>Assets\app_icon.ico</ApplicationIcon>
     <StartupObject>D3Downloader.Program</StartupObject>
   </PropertyGroup>

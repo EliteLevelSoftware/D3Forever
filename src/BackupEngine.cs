@@ -128,8 +128,8 @@ namespace D3Downloader
             {
                 foreach (var f in expectedCdnFiles)
                 {
-                    string localPath = Path.Combine(mirrorRoot, f.localRel.Replace('/', Path.DirectorySeparatorChar));
-                    if (File.Exists(localPath) && new FileInfo(localPath).Length > 0)
+                    string localPath = Program.TrySafePathUnder(mirrorRoot, f.localRel.Replace('/', Path.DirectorySeparatorChar));
+                    if (localPath != null && File.Exists(localPath) && new FileInfo(localPath).Length > 0)
                     {
                         inv.RawCdnPresentCount++;
                     }
@@ -534,7 +534,7 @@ namespace D3Downloader
                 ct.ThrowIfCancellationRequested();
 
                 var item = distinctFiles[i];
-                string localPath = Path.Combine(mirrorRoot, item.localRel.Replace('/', Path.DirectorySeparatorChar));
+                string localPath = Program.SafePathUnder(mirrorRoot, item.localRel.Replace('/', Path.DirectorySeparatorChar));
                 Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
 
                 onOverallProgress?.Invoke(i + 1, total, $"[CDN {i + 1}/{total}] Mirroring {Path.GetFileName(item.url)}...");
@@ -809,7 +809,12 @@ namespace D3Downloader
 
         private static async Task DownloadRawFileAsync(HttpClient http, string url, string destPath, Action<double, string> onProgress, CancellationToken ct)
         {
-            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            if (!Uri.TryCreate(url, UriKind.Absolute, out Uri uri) || uri.Scheme != Uri.UriSchemeHttps)
+            {
+                throw new InvalidOperationException($"Refusing insecure download URL '{url}'.");
+            }
+
+            using var req = new HttpRequestMessage(HttpMethod.Get, uri);
             using var res = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
             res.EnsureSuccessStatusCode();
 
