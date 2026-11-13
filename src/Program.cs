@@ -158,6 +158,17 @@ namespace D3Downloader
                     f.CaptureSnapshot(outSnap, expandRos: false, expandVanilla: true);
                     return 0;
                 }
+                else if (arg.Equals("--launcher-wizard", StringComparison.OrdinalIgnoreCase) ||
+                         arg.Equals("--dev-wizard", StringComparison.OrdinalIgnoreCase) ||
+                         arg.Equals("--launcher-devkit", StringComparison.OrdinalIgnoreCase) ||
+                         arg.Equals("--codegen", StringComparison.OrdinalIgnoreCase))
+                {
+                    System.Windows.Forms.Application.EnableVisualStyles();
+                    System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+                    using var f = new LauncherIntegrationDialog();
+                    f.ShowDialog();
+                    return 0;
+                }
                 else if ((arg.Equals("--version", StringComparison.OrdinalIgnoreCase) || arg.Equals("--build", StringComparison.OrdinalIgnoreCase)) && i + 1 < args.Length)
                 {
                     versionArg = args[++i];

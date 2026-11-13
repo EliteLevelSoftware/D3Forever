@@ -178,10 +178,12 @@ namespace D3Downloader
             int hoverWinBtn = -1; // 0=min, 1=close
             bool hoverLocale = false;
             bool hoverBackup = false;
+            bool hoverDevKit = false;
 
-            var updateBtnRect = new Rectangle(320, 22, 148, 30);
-            var backupBtnRect = new Rectangle(480, 22, 175, 30);
-            var localeRect = new Rectangle(675, 22, 196, 30);
+            var updateBtnRect = new Rectangle(230, 22, 126, 30);
+            var backupBtnRect = new Rectangle(366, 22, 154, 30);
+            var devKitBtnRect = new Rectangle(528, 22, 150, 30);
+            var localeRect = new Rectangle(736, 22, 142, 30);
             var minRect = new Rectangle(890, 22, 32, 30);
             var closeRect = new Rectangle(926, 22, 32, 30);
 
@@ -299,6 +301,33 @@ namespace D3Downloader
                     e.Graphics.DrawString("BACKUP ALL BUILDS", bkFont, bkBrush, textRect, sf);
                 }
 
+                // Launcher Dev Kit Button (Toolbar)
+                using (var devPath = CreateRoundRect(devKitBtnRect, 5))
+                using (var devFill = new SolidBrush(hoverDevKit ? Color.FromArgb(24, 48, 86) : Color.FromArgb(16, 22, 35)))
+                using (var devBorder = new Pen(hoverDevKit ? Color.FromArgb(59, 130, 246) : Color.FromArgb(45, 65, 95), hoverDevKit ? 1.4f : 1f))
+                {
+                    e.Graphics.FillPath(devFill, devPath);
+                    e.Graphics.DrawPath(devBorder, devPath);
+                }
+
+                // Crisp vector code brackets icon
+                int devX = devKitBtnRect.X + 10;
+                int devY = devKitBtnRect.Y + 8;
+                using (var codePen = new Pen(hoverDevKit ? Color.FromArgb(59, 130, 246) : Color.FromArgb(148, 163, 184), 1.4f))
+                {
+                    e.Graphics.DrawLines(codePen, new[] { new Point(devX + 4, devY + 3), new Point(devX + 1, devY + 7), new Point(devX + 4, devY + 11) });
+                    e.Graphics.DrawLines(codePen, new[] { new Point(devX + 10, devY + 3), new Point(devX + 13, devY + 7), new Point(devX + 10, devY + 11) });
+                    e.Graphics.DrawLine(codePen, devX + 8, devY + 2, devX + 6, devY + 12);
+                }
+
+                using (var devFont = new Font("Segoe UI", 8.25f, FontStyle.Bold))
+                using (var devBrush = new SolidBrush(hoverDevKit ? Color.White : Color.FromArgb(203, 213, 225)))
+                {
+                    var textRect = new Rectangle(devKitBtnRect.X + 26, devKitBtnRect.Y, devKitBtnRect.Width - 28, devKitBtnRect.Height);
+                    var sf = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center };
+                    e.Graphics.DrawString("LAUNCHER DEV KIT", devFont, devBrush, textRect, sf);
+                }
+
                 // Crisp Vector Window Buttons (Minimize & Close only)
                 DrawMinimizeButton(e.Graphics, minRect, hoverWinBtn == 0);
                 DrawCloseButton(e.Graphics, closeRect, hoverWinBtn == 1);
@@ -317,14 +346,16 @@ namespace D3Downloader
 
                 bool newLoc = localeRect.Contains(e.Location);
                 bool newBackup = backupBtnRect.Contains(e.Location);
+                bool newDevKit = devKitBtnRect.Contains(e.Location);
                 bool newUpdate = _availableUpdate?.HasUpdate == true && updateBtnRect.Contains(e.Location);
-                _topToolbar.Cursor = (newHover >= 0 || newLoc || newBackup || newUpdate) ? Cursors.Hand : Cursors.Default;
+                _topToolbar.Cursor = (newHover >= 0 || newLoc || newBackup || newDevKit || newUpdate) ? Cursors.Hand : Cursors.Default;
 
-                if (newHover != hoverWinBtn || newLoc != hoverLocale || newBackup != hoverBackup || newUpdate != _hoverUpdateBtn)
+                if (newHover != hoverWinBtn || newLoc != hoverLocale || newBackup != hoverBackup || newDevKit != hoverDevKit || newUpdate != _hoverUpdateBtn)
                 {
                     hoverWinBtn = newHover;
                     hoverLocale = newLoc;
                     hoverBackup = newBackup;
+                    hoverDevKit = newDevKit;
                     _hoverUpdateBtn = newUpdate;
                     _topToolbar.Invalidate();
                 }
@@ -334,6 +365,7 @@ namespace D3Downloader
                 hoverWinBtn = -1;
                 hoverLocale = false;
                 hoverBackup = false;
+                hoverDevKit = false;
                 _hoverUpdateBtn = false;
                 _topToolbar.Invalidate();
             };
@@ -352,6 +384,12 @@ namespace D3Downloader
                 {
                     using var dlg = new BackupDialog(_txtTargetLocation?.Text ?? @"C:\Games\Diablo III");
                     dlg.ShowDialog(this);
+                    return;
+                }
+                if (devKitBtnRect.Contains(e.Location))
+                {
+                    using var devDlg = new LauncherIntegrationDialog(_selectedRosBuild);
+                    devDlg.ShowDialog(this);
                     return;
                 }
                 if (localeRect.Contains(e.Location))

@@ -19,12 +19,13 @@
 
 ---
 
-**Diablo 3 Forever** (v1.4.5) is a standalone, zero-dependency open-source archival downloader and multi-version installer that streams, reconstructs, and archives **93 official Diablo III builds** (spanning retail releases, Public Test Realm PTR iterations, and closed/open beta milestone clients from 2011 to 2025) **100% directly from Blizzard's official CDN servers**.
+**Diablo 3 Forever** (v1.4.6) is a standalone, zero-dependency open-source archival downloader and multi-version installer that streams, reconstructs, and archives **93 official Diablo III builds** (spanning retail releases, Public Test Realm PTR iterations, and closed/open beta milestone clients from 2011 to 2025) **100% directly from Blizzard's official CDN servers**.
 
-> ### **[Download `Diablo3Forever.exe` v1.4.5 (Standalone Windows x64 - Zero Dependencies)](https://github.com/EliteLevelSoftware/D3Forever/releases/download/v1.4.5/Diablo3Forever.exe)**
-> - **Version:** `v1.4.5`
-> - **SHA-256:** `223fc81e91444e4f895512678a58213158e09f7939da1bccacbc96e3686b872c` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
+> ### **[Download `Diablo3Forever.exe` v1.4.6 (Standalone Windows x64 - Zero Dependencies)](https://github.com/EliteLevelSoftware/D3Forever/releases/download/v1.4.6/Diablo3Forever.exe)**
+> - **Version:** `v1.4.6`
+> - **SHA-256:** `57d29c50584e7fd88c4b0c4a98201a5a06f418d46c974d2160a5c48f179f4d73` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
 > - **Build Catalog & Provenance Tracker:** [`docs/Diablo3_Versions_Tracker_Enriched.xlsx`](docs/Diablo3_Versions_Tracker_Enriched.xlsx)
+> - **Server & Launcher Developer Integration Guide:** [`docs/SERVER_INTEGRATION_GUIDE.md`](docs/SERVER_INTEGRATION_GUIDE.md)
 > - Or browse **[GitHub Releases](https://github.com/EliteLevelSoftware/D3Forever/releases)**
 
 ![Diablo 3 Forever Screenshot](docs/diablo3forever-preview.png)
@@ -42,6 +43,7 @@
 > - **🟢 Patch 2.7.4.84161 (100% Live CDN Download - Server Standard):** All standalone executables (`Diablo III64.exe`, `Diablo III.exe`), DLLs, and 17.37 GB of shared CASC game assets stream directly from live Blizzard CDN edge nodes with bit-for-bit MD5 CKey cryptographic verification. No external files required.
 > - **⚡ Historical CASC Builds (2.6.4 – 2.7.8 / Hybrid CASC Pipeline):** Manifest configurations (`BuildConfig`, `CDNConfig`, `install`, `encoding`) and all 17.37 GB of shared archive assets remain active on Blizzard's CDN. Diablo 3 Forever automatically federates shared CASC archives and uses the Option B Clean Binary Package system to recover patch binaries without fragile diffing.
 
+- **Server Launcher Dev Kit & Integration Studio (v1.4.6):** Custom launcher and private server developers (DiIiS, retro communities) can automate client installations silently for their players. Includes an interactive GUI Studio (`[🚀 LAUNCHER DEV KIT]` toolbar button or `--launcher-wizard`) that generates ready-to-paste integration code in **C# / .NET**, **Electron / Node.js**, **Python 3**, **PowerShell**, **Batch**, and **C++ / Win32**. Automatically downloads `Diablo3Forever.exe` via GitHub Releases (properly incrementing official download metrics), extracts clean binaries or full clients headless, and boots the game with custom server IP/port configurations. See the [Server Integration Guide](docs/SERVER_INTEGRATION_GUIDE.md).
 - **Language Pack Export (v1.4.5):** Download only the language data of any CASC build - pick individual languages or tick **ALL LANGUAGES (BULK)** in `Bulk Archival > LANGUAGE PACKS`, or run `--language-packs <folder> --languages all`. Each pack is a delta against the Windows enUS client (text + audio) and writes `chunks/data.NNN` plus `pack.json`, without touching an installation.
 - **Bulk Archival & Cold Storage Backup Engine:** Backup and preserve the entire 93-build catalog to an external hard drive, USB storage, or network share (NAS):
   - **Live Destination Inventory Tracker:** Automatically inspects the destination drive in real time, displaying present vs. needed builds and guaranteeing 100% incremental resume (already verified files are never re-downloaded).
@@ -75,6 +77,9 @@
 ```powershell
 # Interactive GUI
 .\Diablo3Forever.exe
+
+# Open Launcher Integration Studio & Code Generator Wizard
+.\Diablo3Forever.exe --launcher-wizard
 
 # List all 93 official Blizzard CDN builds with release dates and provenance
 .\Diablo3Forever.exe --list-versions

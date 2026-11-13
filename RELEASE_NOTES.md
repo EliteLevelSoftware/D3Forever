@@ -1,4 +1,35 @@
-﻿# Diablo 3 Forever v1.4.5 — Language pack export
+﻿# Diablo 3 Forever v1.4.6 — Server Launcher Integration Studio
+
+**Release Date:** November 13, 2026  
+**Build:** `v1.4.6` (source build)  
+**Binary:** `Diablo3Forever.exe` (Windows x64 Single-File Standalone — Zero Dependencies)
+
+---
+
+## 🚀 Added: Server Launcher Integration Studio (Dev Kit & Code Generator)
+
+A dedicated, built-in code generation wizard designed for Diablo III private server administrators (e.g. DiIiS), modders, and community launcher developers:
+
+### 1. Interactive Dev Kit Wizard
+- **Instant Code Generation:** Click **🚀 LAUNCHER DEV KIT** on the top toolbar or run `Diablo3Forever.exe --launcher-wizard` to open the studio.
+- **Multi-Language & Framework Support:**
+  - **C# / .NET:** Ready-to-paste `D3GameInstaller.cs` class for WPF, WinForms, Avalonia, or DiIiS custom launchers.
+  - **Electron / Node.js:** Modular `d3Installer.js` module for modern HTML5/JS desktop launchers.
+  - **Python 3:** Zero-dependency `d3_installer.py` automation script.
+  - **PowerShell & Batch:** Single-file `Install-Diablo3.ps1` and `.bat` scripts.
+  - **C++ / Win32:** Native Win32 API snippet with pipe redirection.
+- **Configurable Options:** Select any of the 93 builds (pre-configured for `2.7.4.84161` server standard), installation path, server IP/port, silent mode, and automatic game launch upon completion.
+
+### 2. GitHub Download Metric Attribution
+- All generated scripts download `Diablo3Forever.exe` directly from `https://github.com/EliteLevelSoftware/D3Forever/releases/latest/download/Diablo3Forever.exe`.
+- Every automated player setup registers as a verified download on GitHub, boosting community project metrics.
+
+### 3. Server Integration Documentation
+- Published the complete [Server Launcher Integration Guide](docs/SERVER_INTEGRATION_GUIDE.md) with copy-paste snippets, architectural flowcharts, and headless CLI references.
+
+---
+
+# Diablo 3 Forever v1.4.5 — Language pack export
 
 **Release Date:** November 13, 2026
 **Build:** `v1.4.5` (source build)
