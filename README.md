@@ -23,7 +23,7 @@
 
 > ### **[Download `Diablo3Forever.exe` v1.4.6 (Standalone Windows x64 - Zero Dependencies)](https://github.com/EliteLevelSoftware/D3Forever/releases/download/v1.4.6/Diablo3Forever.exe)**
 > - **Version:** `v1.4.6`
-> - **SHA-256:** `57d29c50584e7fd88c4b0c4a98201a5a06f418d46c974d2160a5c48f179f4d73` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
+> - **SHA-256:** `13825f7432986264e3e22d5f864094ad63a25f46956d5f27d1a381f280d21264` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
 > - **Build Catalog & Provenance Tracker:** [`docs/Diablo3_Versions_Tracker_Enriched.xlsx`](docs/Diablo3_Versions_Tracker_Enriched.xlsx)
 > - **Server & Launcher Developer Integration Guide:** [`docs/SERVER_INTEGRATION_GUIDE.md`](docs/SERVER_INTEGRATION_GUIDE.md)
 > - Or browse **[GitHub Releases](https://github.com/EliteLevelSoftware/D3Forever/releases)**
@@ -60,6 +60,40 @@
 - **Real-Time Per-File CDN Availability Tracking:** Every single version chip displays an animated breathing status dot that probes Blizzard's CDN in real-time (`OK`, `CHECKING`, `OFFLINE`).
 - **Fast "Binaries Only" Mode (~35 MB Fast Patch):** Need only the exact historical `Diablo III.exe` and DLLs for a specific patch without downloading 15 GB of assets? Both Reaper of Souls and Vanilla drawers feature a **Binaries Only (~35 MB Fast Patch)** checkbox to extract, patch, and verify clean binaries in seconds.
 - **GUI + Headless CLI Support:** Run `Diablo3Forever.exe` with no arguments for the interactive GUI, or pass CLI flags for 100% silent, unattended deployment and batch backups.
+
+---
+
+## Interface & Feature Showcase
+
+<div align="center">
+
+### 🌌 Reaper of Souls Multi-Version Drawer
+*Segmented tabs across Retail, PTR, and Closed Beta builds with real-time CDN heartbeat monitoring and Binaries Only Fast Patch.*
+
+<img src="docs/diablo3forever-preview.png" width="920"/>
+
+<br/><br/>
+
+### 📜 Vanilla Classic Expansion Drawer
+*Spans from the original Friends & Family Beta (Build 7162) through Patch 1.0.8a, with live MPQ extraction.*
+
+<img src="docs/preview-vanilla-drawer.png" width="920"/>
+
+<br/><br/>
+
+### 🚀 Server Launcher Integration Dev Kit & Studio (v1.4.6)
+*Real-time code generator for private server developers (DiIiS, retro communities) supporting C#/.NET, Electron, Python, PowerShell, Batch, and C++ with automated GitHub Release download tracking.*
+
+<img src="docs/preview-launcher-studio.png" width="820"/>
+
+<br/><br/>
+
+### 📦 Bulk Archival, Cold Storage & Language Pack Suite
+*Preserve the entire 93-build archive locally with live destination inventory tracking, dual-mode backups, universal multi-language text, and the v1.4.5 delta language pack exporter.*
+
+<img src="docs/preview-backup-coldstorage.png" width="760"/>
+
+</div>
 
 ---
 

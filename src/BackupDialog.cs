@@ -1396,5 +1396,18 @@ namespace D3Downloader
             if (InvokeRequired) BeginInvoke(act);
             else act();
         }
+
+        public void CaptureSnapshot(string outPath)
+        {
+            for (int i = 0; i < 20; i++)
+            {
+                Application.DoEvents();
+                System.Threading.Thread.Sleep(50);
+            }
+
+            using var bmp = new Bitmap(Width, Height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+            DrawToBitmap(bmp, new Rectangle(0, 0, Width, Height));
+            bmp.Save(outPath, System.Drawing.Imaging.ImageFormat.Png);
+        }
     }
 }

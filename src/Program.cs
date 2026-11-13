@@ -138,6 +138,16 @@ namespace D3Downloader
                 {
                     listVersions = true;
                 }
+                else if ((arg.Equals("--snapshot-hero", StringComparison.OrdinalIgnoreCase) || arg.Equals("--snapshot-main", StringComparison.OrdinalIgnoreCase)) && i + 1 < args.Length)
+                {
+                    string outSnap = args[++i];
+                    System.Windows.Forms.Application.EnableVisualStyles();
+                    System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+                    using var f = new VersionSelectorForm();
+                    f.Show();
+                    f.CaptureSnapshot(outSnap, expandRos: false, expandVanilla: false);
+                    return 0;
+                }
                 else if (arg.Equals("--snapshot-ros", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
                 {
                     string outSnap = args[++i];
@@ -156,6 +166,26 @@ namespace D3Downloader
                     using var f = new VersionSelectorForm();
                     f.Show();
                     f.CaptureSnapshot(outSnap, expandRos: false, expandVanilla: true);
+                    return 0;
+                }
+                else if (arg.Equals("--snapshot-backup", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    string outSnap = args[++i];
+                    System.Windows.Forms.Application.EnableVisualStyles();
+                    System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+                    using var f = new BackupDialog(@"C:\Games\Diablo3_Historical_Archive");
+                    f.Show();
+                    f.CaptureSnapshot(outSnap);
+                    return 0;
+                }
+                else if ((arg.Equals("--snapshot-launcher", StringComparison.OrdinalIgnoreCase) || arg.Equals("--snapshot-studio", StringComparison.OrdinalIgnoreCase)) && i + 1 < args.Length)
+                {
+                    string outSnap = args[++i];
+                    System.Windows.Forms.Application.EnableVisualStyles();
+                    System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+                    using var f = new LauncherIntegrationDialog();
+                    f.Show();
+                    f.CaptureSnapshot(outSnap);
                     return 0;
                 }
                 else if (arg.Equals("--launcher-wizard", StringComparison.OrdinalIgnoreCase) ||
