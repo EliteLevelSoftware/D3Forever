@@ -26,6 +26,7 @@ namespace D3Downloader
         private readonly Panel _pnlHeader;
         private readonly Panel _pnlTabBackup;
         private readonly Panel _pnlTabAssemble;
+        private readonly Panel _pnlTabLanguages;
 
         // Tab 1: Backup Controls
         private readonly TextBox _txtDest;
@@ -54,6 +55,14 @@ namespace D3Downloader
         private readonly CheckBox _chkAssembleFirewall;
         private readonly CheckBox _chkAssemblePrereqs;
         private readonly Button _btnAssembleStart;
+
+        // Tab 3: Language pack export controls
+        private readonly ComboBox _cbPacksBuild;
+        private readonly CheckedListBox _clbPacksLocales;
+        private readonly CheckBox _chkPacksAllLanguages;
+        private readonly TextBox _txtPacksDest;
+        private readonly Button _btnPacksBrowse;
+        private readonly Button _btnPacksStart;
 
         // Progress & Logging (Shared)
         private readonly ProgressBar _pbOverall;
@@ -167,39 +176,38 @@ namespace D3Downloader
                 Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
+            var btnTab3 = new Button
+            {
+                Text = "🌐 LANGUAGE PACKS",
+                Location = new Point(594, 4),
+                Size = new Size(166, 30),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
 
             void UpdateTabs()
             {
-                if (_activeTab == 0)
+                var tabs = new[] { btnTab1, btnTab2, btnTab3 };
+                for (int i = 0; i < tabs.Length; i++)
                 {
-                    btnTab1.BackColor = Color.FromArgb(30, 58, 138);
-                    btnTab1.ForeColor = Color.White;
-                    btnTab1.FlatAppearance.BorderColor = Color.FromArgb(59, 130, 246);
-                    btnTab2.BackColor = Color.FromArgb(18, 24, 38);
-                    btnTab2.ForeColor = Color.FromArgb(148, 163, 184);
-                    btnTab2.FlatAppearance.BorderColor = Color.FromArgb(36, 45, 66);
-                    _pnlTabBackup.Visible = true;
-                    _pnlTabAssemble.Visible = false;
-                    _btnStart.Visible = true;
+                    bool active = i == _activeTab;
+                    tabs[i].BackColor = active ? Color.FromArgb(30, 58, 138) : Color.FromArgb(18, 24, 38);
+                    tabs[i].ForeColor = active ? Color.White : Color.FromArgb(148, 163, 184);
+                    tabs[i].FlatAppearance.BorderColor = active ? Color.FromArgb(59, 130, 246) : Color.FromArgb(36, 45, 66);
                 }
-                else
-                {
-                    btnTab2.BackColor = Color.FromArgb(30, 58, 138);
-                    btnTab2.ForeColor = Color.White;
-                    btnTab2.FlatAppearance.BorderColor = Color.FromArgb(59, 130, 246);
-                    btnTab1.BackColor = Color.FromArgb(18, 24, 38);
-                    btnTab1.ForeColor = Color.FromArgb(148, 163, 184);
-                    btnTab1.FlatAppearance.BorderColor = Color.FromArgb(36, 45, 66);
-                    _pnlTabBackup.Visible = false;
-                    _pnlTabAssemble.Visible = true;
-                    _btnStart.Visible = false;
-                }
+                _pnlTabBackup.Visible = _activeTab == 0;
+                _pnlTabAssemble.Visible = _activeTab == 1;
+                _pnlTabLanguages.Visible = _activeTab == 2;
+                _btnStart.Visible = _activeTab == 0;
             }
 
             btnTab1.Click += (_, _) => { _activeTab = 0; UpdateTabs(); };
             btnTab2.Click += (_, _) => { _activeTab = 1; UpdateTabs(); };
+            btnTab3.Click += (_, _) => { _activeTab = 2; UpdateTabs(); };
             pnlTabBar.Controls.Add(btnTab1);
             pnlTabBar.Controls.Add(btnTab2);
+            pnlTabBar.Controls.Add(btnTab3);
             Controls.Add(pnlTabBar);
 
             // ====================================================================
@@ -719,6 +727,168 @@ namespace D3Downloader
             Controls.Add(_pnlTabAssemble);
 
             // ====================================================================
+            // PANEL 3: LANGUAGE PACK EXPORT (delta against Windows enUS)
+            // ====================================================================
+            _pnlTabLanguages = new Panel
+            {
+                Location = new Point(0, 100),
+                Size = new Size(780, 280),
+                BackColor = Color.Transparent,
+                Visible = false
+            };
+
+            var lblLangExpl = new Label
+            {
+                Text = "Export distributable language packs straight from Blizzard's CDN. Each pack carries only what a language adds on top of the English client (text and audio), so nothing is installed and the game folder is never touched.",
+                Location = new Point(22, 6),
+                Size = new Size(733, 32),
+                Font = new Font("Segoe UI", 8.25f),
+                ForeColor = Color.FromArgb(148, 163, 184)
+            };
+            _pnlTabLanguages.Controls.Add(lblLangExpl);
+
+            var lblPackBuild = new Label
+            {
+                Text = "BUILD:",
+                Location = new Point(22, 42),
+                AutoSize = true,
+                Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(154, 166, 191)
+            };
+            _pnlTabLanguages.Controls.Add(lblPackBuild);
+
+            _cbPacksBuild = new ComboBox
+            {
+                Location = new Point(22, 62),
+                Size = new Size(480, 25),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                BackColor = Color.FromArgb(17, 23, 34),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.5f)
+            };
+            _cbPacksBuild.Items.AddRange(D3BuildCatalog.AllBuilds.Where(b => b.IsCasc).ToArray());
+            _cbPacksBuild.DisplayMember = "DisplayTitle";
+            if (_cbPacksBuild.Items.Count > 0) _cbPacksBuild.SelectedIndex = 0;
+            _pnlTabLanguages.Controls.Add(_cbPacksBuild);
+
+            var lblPacksLocales = new Label
+            {
+                Text = "LANGUAGES (EACH ONE BECOMES A SEPARATE PACK):",
+                Location = new Point(22, 98),
+                AutoSize = true,
+                Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(154, 166, 191)
+            };
+            _pnlTabLanguages.Controls.Add(lblPacksLocales);
+
+            _clbPacksLocales = new CheckedListBox
+            {
+                Location = new Point(22, 118),
+                Size = new Size(480, 110),
+                CheckOnClick = true,
+                MultiColumn = true,
+                ColumnWidth = 158,
+                BorderStyle = BorderStyle.FixedSingle,
+                BackColor = Color.FromArgb(17, 23, 34),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 8.25f)
+            };
+            _clbPacksLocales.Items.AddRange(BackupEngine.AllSupportedLocales
+                .Where(l => !l.Equals("enUS", StringComparison.OrdinalIgnoreCase)).Cast<object>().ToArray());
+            _pnlTabLanguages.Controls.Add(_clbPacksLocales);
+
+            // Bulk switch: one check downloads every language in a single run.
+            _chkPacksAllLanguages = new CheckBox
+            {
+                Text = "ALL LANGUAGES (BULK)",
+                Location = new Point(320, 94),
+                Size = new Size(182, 20),
+                ForeColor = Color.FromArgb(203, 213, 225),
+                Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Checked = false
+            };
+            _chkPacksAllLanguages.CheckedChanged += (_, _) =>
+            {
+                bool all = _chkPacksAllLanguages.Checked;
+                for (int i = 0; i < _clbPacksLocales.Items.Count; i++) _clbPacksLocales.SetItemChecked(i, all);
+                _clbPacksLocales.Enabled = !all;
+                _btnPacksStart.Text = all ? "🌐 EXPORT ALL LANGUAGES (BULK)" : "🌐 EXPORT LANGUAGE PACKS";
+            };
+            _pnlTabLanguages.Controls.Add(_chkPacksAllLanguages);
+
+            var lblPacksDest = new Label
+            {
+                Text = "OUTPUT FOLDER:",
+                Location = new Point(516, 42),
+                AutoSize = true,
+                Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(154, 166, 191)
+            };
+            _pnlTabLanguages.Controls.Add(lblPacksDest);
+
+            _txtPacksDest = new TextBox
+            {
+                Location = new Point(516, 62),
+                Size = new Size(239, 25),
+                BackColor = Color.FromArgb(7, 9, 15),
+                ForeColor = Color.White,
+                Font = new Font("Consolas", 9f),
+                Text = @"C:\Games\D3-LanguagePacks"
+            };
+            _pnlTabLanguages.Controls.Add(_txtPacksDest);
+
+            _btnPacksBrowse = new Button
+            {
+                Text = "Browse...",
+                Location = new Point(516, 92),
+                Size = new Size(110, 26),
+                BackColor = Color.FromArgb(32, 41, 61),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.25f)
+            };
+            _btnPacksBrowse.Click += (_, _) =>
+            {
+                using var dlg = new FolderBrowserDialog { Description = "Choose where the language packs will be written." };
+                if (Directory.Exists(_txtPacksDest.Text.Trim())) dlg.SelectedPath = _txtPacksDest.Text.Trim();
+                if (dlg.ShowDialog(this) == DialogResult.OK) _txtPacksDest.Text = dlg.SelectedPath;
+            };
+            _pnlTabLanguages.Controls.Add(_btnPacksBrowse);
+
+            var lblPacksNote = new Label
+            {
+                Text = "Output: <folder>\\<build>\\<language>\\ with chunks/data.NNN plus pack.json.\n\nTick ALL LANGUAGES (BULK) to export every language of the selected build in one run. enUS is the base client and has no pack.",
+                Location = new Point(516, 126),
+                Size = new Size(239, 92),
+                Font = new Font("Segoe UI", 7.75f),
+                ForeColor = Color.FromArgb(120, 133, 156)
+            };
+            _pnlTabLanguages.Controls.Add(lblPacksNote);
+
+            _btnPacksStart = new Button
+            {
+                Text = "🌐 EXPORT LANGUAGE PACKS",
+                Location = new Point(22, 248),
+                Size = new Size(733, 30),
+                BackColor = Color.FromArgb(59, 130, 246),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            _btnPacksStart.FlatAppearance.BorderSize = 0;
+            _btnPacksStart.Click += async (_, _) =>
+            {
+                if (_isRunning) CancelCurrentOperation();
+                else await StartLanguagePacksAsync();
+            };
+            _pnlTabLanguages.Controls.Add(_btnPacksStart);
+
+            Controls.Add(_pnlTabLanguages);
+
+            // ====================================================================
             // BOTTOM SECTION: Progress Bars, Log Output & Action Buttons
             // ====================================================================
             _lblOverall = new Label
@@ -1067,6 +1237,78 @@ namespace D3Downloader
             }
         }
 
+        private async Task StartLanguagePacksAsync()
+        {
+            if (_cbPacksBuild.SelectedItem is not D3BuildCatalogItem build)
+            {
+                MessageBox.Show(this, "Select a CASC build first.", "Missing Build",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var locales = _chkPacksAllLanguages.Checked
+                ? _clbPacksLocales.Items.Cast<object>().Select(o => o.ToString()).ToArray()
+                : _clbPacksLocales.CheckedItems.Cast<object>().Select(o => o.ToString()).ToArray();
+            string destination = _txtPacksDest.Text.Trim();
+            if (locales.Length == 0)
+            {
+                MessageBox.Show(this, "Check at least one language.", "No Language Selected",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(destination) || !Path.IsPathFullyQualified(destination))
+            {
+                MessageBox.Show(this, "Choose an absolute output folder for the packs.", "Missing Destination",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            SetRunningState(true, "Language Packs");
+            _cts = new CancellationTokenSource();
+            try
+            {
+                int code = await Program.ExportLanguagePacksAsync(
+                    outputDir: destination,
+                    build: build,
+                    region: "us",
+                    locales: locales,
+                    maxConcurrency: 16,
+                    log: msg => SafeInvoke(() =>
+                    {
+                        _txtLog.AppendText(msg + "\r\n");
+                        _txtLog.SelectionStart = _txtLog.Text.Length;
+                        _txtLog.ScrollToCaret();
+                    }),
+                    onProgress: (pct, status) => SafeInvoke(() =>
+                    {
+                        _pbOverall.Value = (int)Math.Clamp(pct, 0, 100);
+                        _lblOverall.Text = status ?? "";
+                        _lblCurrent.Text = status ?? "";
+                    }),
+                    ct: _cts.Token);
+
+                MessageBox.Show(this, code == 0
+                        ? "Language packs exported successfully!"
+                        : "Export finished with warnings. Check the log for chunks the CDN no longer hosts.",
+                    "Language Packs", MessageBoxButtons.OK,
+                    code == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+            }
+            catch (OperationCanceledException)
+            {
+                SafeInvoke(() => _txtLog.AppendText("\r\n[CANCELED] Language pack export canceled by user.\r\n"));
+            }
+            catch (Exception ex)
+            {
+                SafeInvoke(() => _txtLog.AppendText($"\r\n[ERROR] Language pack export failed: {ex.Message}\r\n"));
+                MessageBox.Show(this, $"Language pack export failed: {ex.Message}", "Language Packs",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                SetRunningState(false, "Language Packs");
+            }
+        }
+
         private void SetRunningState(bool running, string opName)
         {
             _isRunning = running;
@@ -1076,8 +1318,9 @@ namespace D3Downloader
                 _btnStart.BackColor = Color.FromArgb(185, 28, 28);
                 _btnAssembleStart.Text = "⏹ CANCEL";
                 _btnAssembleStart.BackColor = Color.FromArgb(185, 28, 28);
-                _btnClose.Enabled = false;
-                _txtDest.Enabled = false;
+                _btnPacksStart.Text = "⏹ CANCEL";
+                _btnPacksStart.BackColor = Color.FromArgb(185, 28, 28);
+                _btnClose.Enabled = false;                _txtDest.Enabled = false;
                 _btnBrowse.Enabled = false;
                 _chkFastBinaries.Enabled = false;
                 _chkRawCdn.Enabled = false;
@@ -1085,6 +1328,11 @@ namespace D3Downloader
                 _cbScope.Enabled = false;
                 _cbLocale.Enabled = false;
                 _cbLocalePack.Enabled = false;
+                _cbPacksBuild.Enabled = false;
+                _clbPacksLocales.Enabled = false;
+                _chkPacksAllLanguages.Enabled = false;
+                _txtPacksDest.Enabled = false;
+                _btnPacksBrowse.Enabled = false;
                 _txtArchiveSrc.Enabled = false;
                 _btnBrowseArchiveSrc.Enabled = false;
                 _cbAssembleBuild.Enabled = false;
@@ -1102,6 +1350,10 @@ namespace D3Downloader
                 _btnStart.BackColor = Color.FromArgb(0, 116, 224);
                 _btnAssembleStart.Text = "⚡ ASSEMBLE COMPLETE GAME INSTALL";
                 _btnAssembleStart.BackColor = Color.FromArgb(16, 185, 129);
+                _btnPacksStart.Text = _chkPacksAllLanguages.Checked
+                    ? "🌐 EXPORT ALL LANGUAGES (BULK)"
+                    : "🌐 EXPORT LANGUAGE PACKS";
+                _btnPacksStart.BackColor = Color.FromArgb(59, 130, 246);
                 _btnClose.Enabled = true;
                 _txtDest.Enabled = true;
                 _btnBrowse.Enabled = true;
@@ -1111,6 +1363,11 @@ namespace D3Downloader
                 _cbScope.Enabled = true;
                 _cbLocale.Enabled = true;
                 _cbLocalePack.Enabled = true;
+                _cbPacksBuild.Enabled = true;
+                _clbPacksLocales.Enabled = !_chkPacksAllLanguages.Checked;
+                _chkPacksAllLanguages.Enabled = true;
+                _txtPacksDest.Enabled = true;
+                _btnPacksBrowse.Enabled = true;
                 _txtArchiveSrc.Enabled = true;
                 _btnBrowseArchiveSrc.Enabled = true;
                 _cbAssembleBuild.Enabled = true;

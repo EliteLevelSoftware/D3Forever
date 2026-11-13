@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace D3Downloader
 {
-    internal static class Program
+    internal static partial class Program
     {
         private static readonly string[] DefaultPatchHosts =
         {
@@ -120,6 +120,9 @@ namespace D3Downloader
             bool binariesOnly = false;
             bool listVersions = false;
             string exeName = Process.GetCurrentProcess().MainModule?.ModuleName ?? string.Empty;
+            string languagePacksDir = null;
+            var languageSelection = new List<string>();
+            bool packPlan = false;
             bool fullDeploy = exeName.Contains("FullInstaller", StringComparison.OrdinalIgnoreCase)
                            || exeName.Contains("AutoDeploy", StringComparison.OrdinalIgnoreCase);
             bool launchGui = args.Length == 0 && !fullDeploy && !exeName.Contains("D3Downloader", StringComparison.OrdinalIgnoreCase);
@@ -198,6 +201,21 @@ namespace D3Downloader
                 else if (arg.Equals("--threads", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length && int.TryParse(args[++i], out int th))
                 {
                     maxConcurrency = Math.Clamp(th, 1, 64);
+                }
+                else if (arg.Equals("--language-packs", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    languagePacksDir = args[++i];
+                    launchGui = false;
+                }
+                else if (arg.Equals("--languages", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    languageSelection.AddRange(args[++i].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                    launchGui = false;
+                }
+                else if (arg.Equals("--pack-plan", StringComparison.OrdinalIgnoreCase))
+                {
+                    packPlan = true;
+                    launchGui = false;
                 }
                 else if (arg.Equals("--backup-all", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
                 {
@@ -496,6 +514,32 @@ namespace D3Downloader
             if (resolvedBuild == null)
             {
                 Console.Error.WriteLine($"[ERROR] Unknown version or build '{versionArg}'. Run with --list-versions to see all {D3BuildCatalog.AllBuilds.Count} supported builds.");
+                return 1;
+            }
+
+            if (!string.IsNullOrWhiteSpace(languagePacksDir))
+            {
+                return ExportLanguagePacksAsync(
+                    outputDir: languagePacksDir,
+                    build: resolvedBuild,
+                    region: region,
+                    locales: languageSelection,
+                    maxConcurrency: maxConcurrency,
+                    log: Console.WriteLine,
+                    onProgress: null,
+                    ct: CancellationToken.None,
+                    planOnly: packPlan,
+                    limit: dryRunLimit).GetAwaiter().GetResult();
+            }
+
+            if (languageSelection.Count > 0)
+            {
+                Console.Error.WriteLine("[ERROR] --languages requires --language-packs <folder>.");
+                return 1;
+            }
+            if (packPlan)
+            {
+                Console.Error.WriteLine("[ERROR] --pack-plan requires --language-packs <folder>.");
                 return 1;
             }
 

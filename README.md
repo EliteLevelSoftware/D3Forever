@@ -19,11 +19,11 @@
 
 ---
 
-**Diablo 3 Forever** (v1.4.4) is a standalone, zero-dependency open-source archival downloader and multi-version installer that streams, reconstructs, and archives **93 official Diablo III builds** (spanning retail releases, Public Test Realm PTR iterations, and closed/open beta milestone clients from 2011 to 2025) **100% directly from Blizzard's official CDN servers**.
+**Diablo 3 Forever** (v1.4.5) is a standalone, zero-dependency open-source archival downloader and multi-version installer that streams, reconstructs, and archives **93 official Diablo III builds** (spanning retail releases, Public Test Realm PTR iterations, and closed/open beta milestone clients from 2011 to 2025) **100% directly from Blizzard's official CDN servers**.
 
-> ### **[Download `Diablo3Forever.exe` v1.4.4 (Standalone Windows x64 - Zero Dependencies)](https://github.com/EliteLevelSoftware/D3Forever/releases/download/v1.4.4/Diablo3Forever.exe)**
-> - **Version:** `v1.4.4`
-> - **SHA-256:** `b255b366859ba4b984ad4e76ac2f0e0716a8757f4801029725009351815558cf` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
+> ### **[Download `Diablo3Forever.exe` v1.4.5 (Standalone Windows x64 - Zero Dependencies)](https://github.com/EliteLevelSoftware/D3Forever/releases/download/v1.4.5/Diablo3Forever.exe)**
+> - **Version:** `v1.4.5`
+> - **SHA-256:** `abec53d1df7695511e9889d0dc14b735f17020808acce4aa6b63140150b2cf18` ([`release/SHA256SUMS.txt`](release/SHA256SUMS.txt))
 > - **Build Catalog & Provenance Tracker:** [`docs/Diablo3_Versions_Tracker_Enriched.xlsx`](docs/Diablo3_Versions_Tracker_Enriched.xlsx)
 > - Or browse **[GitHub Releases](https://github.com/EliteLevelSoftware/D3Forever/releases)**
 
@@ -42,6 +42,7 @@
 > - **🟢 Patch 2.7.4.84161 (100% Live CDN Download - Server Standard):** All standalone executables (`Diablo III64.exe`, `Diablo III.exe`), DLLs, and 17.37 GB of shared CASC game assets stream directly from live Blizzard CDN edge nodes with bit-for-bit MD5 CKey cryptographic verification. No external files required.
 > - **⚡ Historical CASC Builds (2.6.4 – 2.7.8 / Hybrid CASC Pipeline):** Manifest configurations (`BuildConfig`, `CDNConfig`, `install`, `encoding`) and all 17.37 GB of shared archive assets remain active on Blizzard's CDN. Diablo 3 Forever automatically federates shared CASC archives and uses the Option B Clean Binary Package system to recover patch binaries without fragile diffing.
 
+- **Language Pack Export (v1.4.5):** Download only the language data of any CASC build - pick individual languages or tick **ALL LANGUAGES (BULK)** in `Bulk Archival > LANGUAGE PACKS`, or run `--language-packs <folder> --languages all`. Each pack is a delta against the Windows enUS client (text + audio) and writes `chunks/data.NNN` plus `pack.json`, without touching an installation.
 - **Bulk Archival & Cold Storage Backup Engine:** Backup and preserve the entire 93-build catalog to an external hard drive, USB storage, or network share (NAS):
   - **Live Destination Inventory Tracker:** Automatically inspects the destination drive in real time, displaying present vs. needed builds and guaranteeing 100% incremental resume (already verified files are never re-downloaded).
   - **Dual-Mode Archival:** Download Fast Binaries AND the Raw Blizzard CDN Mirror at the same time via dual checkboxes.
@@ -251,7 +252,31 @@ Diablo3Forever.exe --rebuild-casc "C:\Games\DiabloIII-2.7.6.91007"
 
 # Only re-sync the NGDP catalog of an existing install (fast, no download, no re-index)
 Diablo3Forever.exe --fix-ngdp "C:\Games\DiabloIII-2.7.6.91007"
+
+# Export language packs only for one build (delta against the Windows enUS client)
+Diablo3Forever.exe --build 2.8.0 --language-packs "D:\packs" --languages ptBR,deDE
+
+# Export every published language for a build (bulk)
+Diablo3Forever.exe --build 2.7.6 --language-packs "D:\packs" --languages all
 ```
+
+### Language pack export
+
+`--language-packs <folder>` downloads only the language data of the chosen CASC build and
+writes a distributable folder per language:
+
+```
+<folder>\<version.build>\<locale>\chunks\data.NNN   CASC blobs (30-byte header included)
+<folder>\<version.build>\<locale>\pack.json         build keys, locale, chunk map (k/K/a/o/s, sha256)
+```
+
+- Each pack is a **delta against the Windows enUS set**: only the chunks a language adds
+  (text and audio) are shipped, so the English client is the base and `enUS` has no pack.
+- `--languages all` (or omitting the flag) exports every supported language; an explicit
+  comma-separated list keeps only those. Exit code `0` means every chunk was available,
+  `1` reports chunks the CDN no longer hosts (they stay listed in the log).
+- Nothing is written into a game installation; the packs can be uploaded or handed to
+  another tool. The same export is available in the GUI under **Bulk Archival → LANGUAGE PACKS**.
 
 ---
 
