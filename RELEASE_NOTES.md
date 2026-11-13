@@ -1,4 +1,4 @@
-# Diablo 3 Forever v1.4.5 — Language pack export
+﻿# Diablo 3 Forever v1.4.5 — Language pack export
 
 **Release Date:** November 13, 2026
 **Build:** `v1.4.5` (source build)
@@ -17,6 +17,8 @@ locale, and a `k/K/a/o/s/sha256` map for every chunk).
   **ALL LANGUAGES (BULK)** to export every language of that build in one run.
 - Packs are deltas against the Windows enUS set, so only what a language adds (text and
   audio) is shipped; `enUS` itself has no pack.
+- Interrupted exports resume from the last flushed chunk, including archives written by earlier
+  builds (each adopted chunk is re-checked against its expected size and must decode as BLTE).
 - Nothing is written into a game installation. Chunks the CDN no longer hosts are reported
   per chunk and keep exit code `1`; `--pack-plan` prints delta sizes without downloading
   anything, and `--limit N` exports only the first N chunks for diagnostics.

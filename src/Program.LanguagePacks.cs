@@ -333,22 +333,26 @@ namespace D3Downloader
         {
             string directory = Path.Combine(packRoot, locale);
             string chunksDir = Path.Combine(directory, "chunks");
+            string markerPath = Path.Combine(directory, "pack.partial.json");
             Directory.CreateDirectory(chunksDir);
 
             var entries = new List<(string Key, string FullKey, int Archive, long Offset, long Size, string Sha256)>();
-            int archiveIndex = 0;
-            long archiveSize = 0;
+            var missingKeys = new List<string>();
+            int consumed = ResumePartialExport(markerPath, chunksDir, locale, build, versionInfo, delta, archiveIndexMap, log,
+                entries, missingKeys, out int archiveIndex, out long archiveSize);
+
             FileStream stream = null;
-            FileStream Open(int index) => new FileStream(Path.Combine(chunksDir, $"data.{index:000}"),
-                FileMode.Create, FileAccess.Write, FileShare.None, 1024 * 1024);
-            stream = delta.Count > 0 ? Open(archiveIndex) : null;
-            int missing = 0;
+            if (delta.Count > 0)
+            {
+                stream = OpenArchive(chunksDir, archiveIndex);
+                stream.Seek(archiveSize, SeekOrigin.Begin);
+            }
             // Chunks average ~150 KB, so a bounded window keeps the CDN busy
             // without buffering gigabytes in memory.
             int batch = Math.Clamp(maxConcurrency * 2, 4, 32);
             try
             {
-                for (int start = 0; start < delta.Count; start += batch)
+                for (int start = consumed; start < delta.Count; start += batch)
                 {
                     ct.ThrowIfCancellationRequested();
                     var slice = delta.Skip(start).Take(batch).ToArray();
@@ -359,7 +363,7 @@ namespace D3Downloader
                         string ekey = slice[n].EKeyHex.ToUpperInvariant();
                         if (blob == null || blob.Length == 0)
                         {
-                            missing++;
+                            missingKeys.Add(ekey);
                             log($"      [MISSING] {locale} chunk {ekey} is no longer hosted by the CDN.");
                             continue;
                         }
@@ -367,7 +371,7 @@ namespace D3Downloader
                         {
                             stream?.Dispose();
                             archiveIndex++;
-                            stream = Open(archiveIndex);
+                            stream = OpenArchive(chunksDir, archiveIndex);
                             archiveSize = 0;
                         }
                         await stream.WriteAsync(blob, ct);
@@ -375,13 +379,19 @@ namespace D3Downloader
                             Convert.ToHexString(SHA256.HashData(blob)).ToLowerInvariant()));
                         archiveSize += blob.Length;
                     }
+                    // Flush per batch so an interrupted run resumes from a chunk
+                    // boundary instead of replaying the buffered tail.
+                    if (stream != null) await stream.FlushAsync(ct);
+                    WritePartialMarker(markerPath, locale, build, versionInfo, delta.Count, start + slice.Length, missingKeys);
                     progress(Math.Min(start + slice.Length, delta.Count), delta.Count);
                 }
             }
             finally
             {
                 stream?.Dispose();
+                try { if (File.Exists(markerPath)) File.Delete(markerPath); } catch { }
             }
+            int missing = missingKeys.Count;
 
             var packJsonPath = Path.Combine(directory, "pack.json");
             await using (var file = new FileStream(packJsonPath, FileMode.Create, FileAccess.Write, FileShare.None, 1024 * 1024))
@@ -422,6 +432,184 @@ namespace D3Downloader
             }
 
             return new LanguagePackResult(locale, directory, entries.Count, entries.Sum(e => e.Size), missing);
+        }
+
+        private static long ExpectedChunkSize(DownloadItem item, Dictionary<string, ArchiveEntryLoc> archiveIndexMap)
+        {
+            if (archiveIndexMap.TryGetValue(item.EKeyHex, out ArchiveEntryLoc loc) && loc.Size > 0) return loc.Size;
+            return item.CompressedSize > 0 ? item.CompressedSize : 0;
+        }
+
+        private static FileStream OpenArchive(string chunksDir, int index) =>
+            new FileStream(Path.Combine(chunksDir, $"data.{index:000}"),
+                FileMode.OpenOrCreate, FileAccess.Write, FileShare.None, 1024 * 1024);
+
+        private static void WritePartialMarker(string path, string locale, D3BuildCatalogItem build, VersionRecord versionInfo,
+            int chunks, int consumed, List<string> missingKeys)
+        {
+            try
+            {
+                using var file = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+                using var json = new Utf8JsonWriter(file);
+                json.WriteStartObject();
+                json.WriteNumber("format", 1);
+                json.WriteString("version", $"{build.Version}.{build.BuildNumber}");
+                json.WriteString("locale", locale);
+                json.WriteString("buildConfig", versionInfo.BuildConfig);
+                json.WriteNumber("chunks", chunks);
+                json.WriteNumber("consumed", consumed);
+                json.WriteStartArray("missing");
+                foreach (string key in missingKeys) json.WriteStringValue(key);
+                json.WriteEndArray();
+                json.WriteEndObject();
+            }
+            catch
+            {
+                // A lost progress marker only costs a restart, never correctness.
+            }
+        }
+
+        /// <summary>
+        /// Rebuilds how far a previous run got. Chunks are appended in a fixed,
+        /// deterministic order, so walking the planned sizes against the archive
+        /// files proves exactly where the last run stopped; the marker supplies the
+        /// chunk index and the chunks the CDN refused (they wrote no bytes).
+        /// Returns the number of chunks already satisfied.
+        /// </summary>
+        private static int ResumePartialExport(
+            string markerPath, string chunksDir, string locale, D3BuildCatalogItem build, VersionRecord versionInfo,
+            List<DownloadItem> delta, Dictionary<string, ArchiveEntryLoc> archiveIndexMap, Action<string> log,
+            List<(string Key, string FullKey, int Archive, long Offset, long Size, string Sha256)> entries,
+            List<string> missingKeys, out int archiveIndex, out long archiveSize)
+        {
+            archiveIndex = 0;
+            archiveSize = 0;
+            var files = Directory.GetFiles(chunksDir, "data.*")
+                .OrderBy(p => p, StringComparer.Ordinal).ToList();
+            if (files.Count == 0) return 0;
+
+            int consumed = 0;
+            bool hasMarker = File.Exists(markerPath);
+            if (hasMarker)
+            {
+                try
+                {
+                    using var document = JsonDocument.Parse(File.ReadAllBytes(markerPath));
+                    var marker = document.RootElement;
+                    bool matches = marker.GetProperty("version").GetString() == $"{build.Version}.{build.BuildNumber}"
+                                && marker.GetProperty("locale").GetString() == locale
+                                && marker.GetProperty("buildConfig").GetString() == versionInfo.BuildConfig
+                                && marker.GetProperty("chunks").GetInt32() == delta.Count;
+                    if (!matches)
+                    {
+                        DiscardPartialExport(files, markerPath);
+                        log($"      {locale}: discarded an incomplete export from a different build.");
+                        return 0;
+                    }
+                    consumed = marker.GetProperty("consumed").GetInt32();
+                    foreach (var element in marker.GetProperty("missing").EnumerateArray())
+                        missingKeys.Add(element.GetString());
+                }
+                catch (Exception error) when (error is IOException or JsonException or KeyNotFoundException or InvalidOperationException)
+                {
+                    DiscardPartialExport(files, markerPath);
+                    log($"      {locale}: previous partial data discarded (progress marker unreadable).");
+                    return 0;
+                }
+            }
+            else
+            {
+                // No marker (an older build wrote these archives). Adopt them anyway:
+                // every resumed chunk is checked against its expected size and must
+                // decode as valid BLTE, so a shifted layout stops at the first
+                // mismatch instead of producing a wrong map.
+                consumed = delta.Count;
+            }
+
+            if (consumed < 0 || consumed > delta.Count) consumed = 0;
+            var missingSet = new HashSet<string>(missingKeys, StringComparer.OrdinalIgnoreCase);
+            var sizes = files.Select(f => new FileInfo(f).Length).ToArray();
+            int fileIndex = 0;
+            long offset = 0;
+            int resumed = 0;
+            byte[] buffer = null;
+            try
+            {
+                for (int i = 0; i < consumed; i++)
+                {
+                    string ekey = delta[i].EKeyHex.ToUpperInvariant();
+                    while (fileIndex < sizes.Length && offset == sizes[fileIndex]) { fileIndex++; offset = 0; }
+                    if (missingSet.Contains(ekey)) { resumed++; continue; }
+                    if (fileIndex >= sizes.Length) break;
+
+                    long size = ExpectedChunkSize(delta[i], archiveIndexMap);
+                    if (size <= 0 || offset + size > sizes[fileIndex]) break;
+
+                    if (buffer == null || buffer.Length < size) buffer = new byte[Math.Max(size, 1024 * 1024)];
+                    using (var reader = new FileStream(files[fileIndex], FileMode.Open, FileAccess.Read, FileShare.Read))
+                    {
+                        reader.Seek(offset, SeekOrigin.Begin);
+                        int read = 0;
+                        while (read < size)
+                        {
+                            int chunk = reader.Read(buffer, read, (int)size - read);
+                            if (chunk <= 0) break;
+                            read += chunk;
+                        }
+                        if (read != size) break;
+                    }
+                    if (size < 30 || buffer[0] != (byte)'B' || buffer[1] != (byte)'L' || buffer[2] != (byte)'T' || buffer[3] != (byte)'E')
+                        break; // corrupt tail: stop here and rewrite from this chunk
+                    try
+                    {
+                        // Structural proof that the bytes really are this chunk: a
+                        // shifted layout lands mid-chunk and fails to decode.
+                        BlteDecoder.Decode(buffer.AsSpan(0, (int)size).ToArray());
+                    }
+                    catch
+                    {
+                        break;
+                    }
+
+                    entries.Add((ekey.Substring(0, 18), ekey, fileIndex, offset, size,
+                        Convert.ToHexString(SHA256.HashData(buffer.AsSpan(0, (int)size))).ToLowerInvariant()));
+                    offset += size;
+                    resumed++;
+                }
+            }
+            finally
+            {
+                // Drop anything after the verified prefix so the next append lands
+                // exactly on a chunk boundary.
+                try
+                {
+                    if (fileIndex < files.Count)
+                    {
+                        using (var tail = new FileStream(files[fileIndex], FileMode.Open, FileAccess.Write, FileShare.None))
+                            if (tail.Length != offset) tail.SetLength(offset);
+                        for (int k = fileIndex + 1; k < files.Count; k++) File.Delete(files[k]);
+                    }
+                }
+                catch { }
+            }
+
+            if (resumed == 0)
+            {
+                DiscardPartialExport(files, markerPath);
+                return 0;
+            }
+
+            archiveIndex = fileIndex;
+            archiveSize = offset;
+            log($"      {locale}: resuming at chunk {resumed:N0}/{delta.Count:N0} " +
+                $"({entries.Sum(e => e.Size) / (1024.0 * 1024.0):N1} MB already on disk).");
+            return resumed;
+        }
+
+        private static void DiscardPartialExport(List<string> files, string markerPath)
+        {
+            foreach (string file in files) { try { File.Delete(file); } catch { } }
+            try { if (File.Exists(markerPath)) File.Delete(markerPath); } catch { }
         }
 
         private static async Task<byte[]> FetchChunkAsync(
