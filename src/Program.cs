@@ -199,6 +199,16 @@ namespace D3Downloader
                     f.ShowDialog();
                     return 0;
                 }
+                else if ((arg.Equals("--init-aux-storage", StringComparison.OrdinalIgnoreCase) ||
+                          arg.Equals("--test-aux-storage", StringComparison.OrdinalIgnoreCase)) && i + 1 < args.Length)
+                {
+                    string target = Path.GetFullPath(args[++i]);
+                    AttachConsole(-1);
+                    Console.WriteLine($"Initializing auxiliary storage in {target} ...");
+                    CascStorageWriter.EnsureAuxiliaryContainers(target, Console.WriteLine);
+                    ProductDbWriter.EnsureProductDb(target, Console.WriteLine);
+                    return 0;
+                }
                 else if ((arg.Equals("--version", StringComparison.OrdinalIgnoreCase) || arg.Equals("--build", StringComparison.OrdinalIgnoreCase)) && i + 1 < args.Length)
                 {
                     versionArg = args[++i];
@@ -388,6 +398,8 @@ namespace D3Downloader
                     {
                         int records = CascStorageWriter.RebuildFromExisting(cascDir, Console.WriteLine, keepShmem);
                         Console.WriteLine($"Rebuilt {records:N0} chunk records, 16 .idx files and shmem.");
+                        CascStorageWriter.EnsureAuxiliaryContainers(installRoot, Console.WriteLine, keepExistingShmem: keepShmem);
+                        ProductDbWriter.EnsureProductDb(installRoot, Console.WriteLine);
                         string buildInfo = Path.Combine(installRoot, ".build.info");
                         if (File.Exists(buildInfo))
                         {
@@ -891,6 +903,7 @@ namespace D3Downloader
                 // Step 5: Write .build.info, Launcher.db, and .patch.result
                 Console.WriteLine("[5/7] Generating .build.info, Launcher.db, and .patch.result...");
                 WriteBuildMetadataFiles(targetDir, region, locale, versionInfo, cdnInfo, installCKey);
+                ProductDbWriter.Write(targetDir, region, locale, versionInfo.VersionsName, versionInfo.BuildConfig, versionInfo.CdnConfig, installCKey, log);
                 onProgress?.Invoke(20.0, "Extracting game executables and runtime binaries...");
 
                 // Step 6: Extract Install Manifest files (Diablo III64.exe, DLLs, CEF Scene, etc.)
@@ -918,6 +931,11 @@ namespace D3Downloader
                         });
 
                     log("[7/7] Binaries-Only mode selected: skipping CASC data.NNN archive download.");
+                    if (selectedBuild?.IsCasc == true)
+                    {
+                        CascStorageWriter.EnsureAuxiliaryContainers(targetDir, log);
+                        ProductDbWriter.EnsureProductDb(targetDir, log);
+                    }
                     onProgress?.Invoke(100, $"Binaries extraction complete for {selectedBuild.Version}.{selectedBuild.BuildNumber}!");
                 }
                 else
@@ -974,6 +992,8 @@ namespace D3Downloader
                         }
 
                         cascWriter.WriteIndicesAndShmem();
+                        CascStorageWriter.EnsureAuxiliaryContainers(targetDir, log);
+                        ProductDbWriter.EnsureProductDb(targetDir, log);
                     }
                 }
 
@@ -3082,6 +3102,83 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             BinaryPrimitives.WriteUInt32LittleEndian(shmem.AsSpan(0x01D8, 4), 0x4000u);
 
             File.WriteAllBytes(Path.Combine(cascDataDir, "shmem"), shmem);
+        }
+
+        /// <summary>
+        /// Writes an empty CASC container (e.g. Data\d3 or Data\ecache) with 16 empty .idx files
+        /// (valid guarded-block headers, IDX v7), a corresponding shmem file, and an empty .residency file.
+        /// </summary>
+        internal static void WriteEmptyContainer(string containerDir, uint idxVersion = 1u, bool isResidency = false)
+        {
+            Directory.CreateDirectory(containerDir);
+            if (isResidency)
+            {
+                string residencyPath = Path.Combine(containerDir, ".residency");
+                if (!File.Exists(residencyPath))
+                {
+                    File.WriteAllBytes(residencyPath, Array.Empty<byte>());
+                }
+            }
+
+            var emptyBuckets = new List<IdxRecord>[16];
+            for (int i = 0; i < 16; i++) emptyBuckets[i] = new List<IdxRecord>(0);
+            uint[] versions = Enumerable.Repeat(idxVersion, 16).ToArray();
+
+            WriteIndexFiles(containerDir, emptyBuckets, versions);
+            WriteShmem(containerDir, versions);
+        }
+
+        /// <summary>
+        /// Ensures auxiliary CASC containers (Data\d3 and Data\ecache) exist with proper shmem,
+        /// empty index sets, and .residency file. This prevents tact::ClientHandler::Create() error 11.
+        /// </summary>
+        internal static void EnsureAuxiliaryContainers(string targetDir, Action<string> log = null, bool keepExistingShmem = false)
+        {
+            string dataDir = Path.Combine(targetDir, "Data");
+            string d3Dir = Path.Combine(dataDir, "d3");
+            string ecacheDir = Path.Combine(dataDir, "ecache");
+
+            EnsureContainer(d3Dir, isResidency: true, "Data\\d3 (residency)");
+            EnsureContainer(ecacheDir, isResidency: true, "Data\\ecache (cache)");
+
+            void EnsureContainer(string dir, bool isResidency, string label)
+            {
+                Directory.CreateDirectory(dir);
+                if (isResidency)
+                {
+                    string residency = Path.Combine(dir, ".residency");
+                    if (!File.Exists(residency))
+                    {
+                        File.WriteAllBytes(residency, Array.Empty<byte>());
+                    }
+                }
+
+                uint ver = 1u;
+                string shmemPath = Path.Combine(dir, "shmem");
+                if (File.Exists(shmemPath))
+                {
+                    try
+                    {
+                        byte[] existing = File.ReadAllBytes(shmemPath);
+                        if (existing.Length >= 0x114)
+                        {
+                            uint v = BinaryPrimitives.ReadUInt32LittleEndian(existing.AsSpan(0x110, 4));
+                            if (v > 0 && v < 0x1000000) ver = v;
+                        }
+                    }
+                    catch { }
+                }
+
+                var existingIdx = Directory.GetFiles(dir, "*.idx");
+                if (keepExistingShmem && File.Exists(shmemPath) && existingIdx.Length == 16)
+                {
+                    log?.Invoke($"      Preserving existing {label} storage.");
+                    return;
+                }
+
+                log?.Invoke($"      Initializing {label} container (16 empty indexes + shmem, version {ver})...");
+                WriteEmptyContainer(dir, ver, isResidency);
+            }
         }
 
         public void Dispose()

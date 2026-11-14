@@ -1,4 +1,28 @@
-﻿# Diablo 3 Forever v1.4.6 — Server Launcher Integration Studio
+﻿# Diablo 3 Forever v1.4.7 — CASC tact Container Fix & .product.db Support
+
+**Release Date:** November 14, 2026  
+**Build:** `v1.4.7` (source build)  
+**Binary:** `Diablo3Forever.exe` (Windows x64 Single-File Standalone — Zero Dependencies)
+
+---
+
+## 🔧 Fix: CASC Startup Crash (`tact::ClientHandler::Create() error '11'`)
+
+Resolves the 0.2-second startup crash on fresh CASC installations (Patch 2.8.0.99920 and modern CASC clients) where `Diablo III64.exe` failed with `tact::ClientHandler::Create() failed with error '11'` and `GetLastError() = 183 (ERROR_ALREADY_EXISTS)`:
+
+### 1. Auxiliary CASC Storage Containers (`Data\d3` & `Data\ecache`)
+- **`Data\d3\` (Residency Container):** Automatically generates the `Data\d3\` directory containing a 0-byte `.residency` control file, 16 empty IDX v7 mapping tables (`0000000001.idx` through `0f00000001.idx` with valid guarded-block headers), and a 20,480-byte `shmem` storage-control file naming `Global\<drive>:/<path>/Data/d3` with bit0 clear (non-exclusive).
+- **`Data\ecache\` (Engine Cache Container):** Automatically generates the `Data\ecache\` directory containing an empty `.residency` control file, 16 empty IDX v7 mapping tables, and a 20,480-byte `shmem` storage-control file naming `Global\<drive>:/<path>/Data/ecache`. The game client now successfully binds all three storage containers (`data`, `d3`, `ecache`) on launch without collision or interference.
+- **Applied Across All Pipelines:** Automatically generated during Step 7 CASC installation, `--binaries-only` extraction, and `--rebuild-casc` repair.
+
+### 2. Battle.net `.product.db` Protobuf Metadata Generation
+- Generates the hidden `.product.db` protobuf metadata file modeled directly on official Battle.net deployments.
+- Dynamically serializes product codes (`diablo3`, `d3`), normalized POSIX install path, account region, client locale, client version, `BuildConfig`, `CDNConfig`, `InstallKey`, and tags.
+- Enables custom server launchers and 3rd-party tools to identify the installation without manual configuration.
+
+---
+
+# Diablo 3 Forever v1.4.6 — Server Launcher Integration Studio
 
 **Release Date:** November 13, 2026  
 **Build:** `v1.4.6` (source build)  
