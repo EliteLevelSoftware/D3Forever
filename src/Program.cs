@@ -403,17 +403,22 @@ namespace D3Downloader
                         string buildInfo = Path.Combine(installRoot, ".build.info");
                         if (File.Exists(buildInfo))
                         {
-                            string[] lines = File.ReadAllLines(buildInfo);
-                            if (lines.Length >= 2)
+                            string text = File.ReadAllText(buildInfo);
+                            string[] rawLines = text.Split('\n');
+                            var cleanLines = new List<string>();
+                            foreach (var l in rawLines)
                             {
-                                string[] cols = lines[1].Split('|');
-                                if (cols.Length >= 5)
-                                {
-                                    cols[4] = "";
-                                    lines[1] = string.Join('|', cols);
-                                    File.WriteAllLines(buildInfo, lines, Encoding.ASCII);
-                                    Console.WriteLine("Cleared the Install Key in .build.info (matches Blizzard deployments).");
-                                }
+                                string trimmed = l.TrimEnd('\r');
+                                if (!string.IsNullOrEmpty(trimmed)) cleanLines.Add(trimmed);
+                            }
+                            if (cleanLines.Count >= 2)
+                            {
+                                string[] cols = cleanLines[1].Split('|');
+                                // Ensure KeyRing (col 13) is left empty to match official Battle.net deployments
+                                if (cols.Length > 13) cols[13] = "";
+                                cleanLines[1] = string.Join('|', cols);
+                                File.WriteAllText(buildInfo, string.Join('\n', cleanLines) + "\n", Encoding.ASCII);
+                                Console.WriteLine("Normalized .build.info (LF line endings, cleared KeyRing field).");
                             }
                         }
                         try
@@ -2090,12 +2095,12 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                 : cdn.Servers;
             string tags = $"Windows {region.ToUpperInvariant()}? acct-USA? geoip-US? {locale} speech?:Windows {region.ToUpperInvariant()}? acct-USA? geoip-US? {locale} text?";
 
-            var sb = new StringBuilder();
-            sb.AppendLine("Branch!STRING:0|Active!DEC:1|Build Key!HEX:16|CDN Key!HEX:16|Install Key!HEX:16|IM Size!DEC:4|CDN Path!STRING:0|CDN Hosts!STRING:0|CDN Servers!STRING:0|Tags!STRING:0|Armadillo!STRING:0|Last Activated!STRING:0|Version!STRING:0|KeyRing!HEX:16|Product!STRING:0");
-            // Blizzard leaves "Install Key" empty in locally deployed storages; the client validates it
-            // during storage open and rejects the storage (E_STORAGE_INIT) when it is filled in.
-            sb.AppendLine($"{region}|1|{ver.BuildConfig}|{ver.CdnConfig}|||{cdn.Path}|{hostsJoined}|{serversJoined}|{tags}|||{ver.VersionsName}|{ver.KeyRing}|");
-            File.WriteAllText(buildInfoPath, sb.ToString(), Encoding.ASCII);
+            string header = "Branch!STRING:0|Active!DEC:1|Build Key!HEX:16|CDN Key!HEX:16|Install Key!HEX:16|IM Size!DEC:4|CDN Path!STRING:0|CDN Hosts!STRING:0|CDN Servers!STRING:0|Tags!STRING:0|Armadillo!STRING:0|Last Activated!STRING:0|Version!STRING:0|KeyRing!HEX:16|Product!STRING:0";
+            string installKey = string.IsNullOrWhiteSpace(installCKey) ? "" : installCKey.Trim();
+            // Matches official Battle.net installs: Install Key is set, KeyRing is empty, plain \n line endings
+            string dataRow = $"{region}|1|{ver.BuildConfig}|{ver.CdnConfig}|{installKey}||{cdn.Path}|{hostsJoined}|{serversJoined}|{tags}|||{ver.VersionsName}||";
+            string buildInfoContent = header + "\n" + dataRow + "\n";
+            File.WriteAllText(buildInfoPath, buildInfoContent, Encoding.ASCII);
 
             string launcherDbPath = Path.Combine(targetDir, "Launcher.db");
             File.WriteAllText(launcherDbPath, locale, Encoding.ASCII);

@@ -349,17 +349,24 @@ internal static class NgdpConsistency
 
     private static void WriteCdnKey(string buildInfoPath, string oldKey, string newKey)
     {
-        string[] lines = File.ReadAllLines(buildInfoPath);
-        for (int i = 1; i < lines.Length; i++)
+        string text = File.ReadAllText(buildInfoPath);
+        string[] rawLines = text.Split('\n');
+        var cleaned = new List<string>();
+        foreach (var l in rawLines)
         {
-            string[] columns = lines[i].Split('|');
+            string trimmed = l.TrimEnd('\r');
+            if (!string.IsNullOrEmpty(trimmed)) cleaned.Add(trimmed);
+        }
+        for (int i = 1; i < cleaned.Count; i++)
+        {
+            string[] columns = cleaned[i].Split('|');
             if (columns.Length > 3 && columns[3].Trim().Equals(oldKey, StringComparison.OrdinalIgnoreCase))
             {
                 columns[3] = newKey;
-                lines[i] = string.Join('|', columns);
+                cleaned[i] = string.Join('|', columns);
             }
         }
-        File.WriteAllLines(buildInfoPath, lines, Encoding.ASCII);
+        File.WriteAllText(buildInfoPath, string.Join('\n', cleaned) + "\n", Encoding.ASCII);
     }
 
     private static bool IsHash32(string value) =>
