@@ -1,4 +1,24 @@
-﻿# Diablo 3 Forever v1.4.7 — CASC tact Container Fix & .product.db Support
+﻿# Diablo 3 Forever v1.4.8 — Battle.net .build.info Exact Match & Crash Fix
+
+**Release Date:** November 14, 2026  
+**Build:** `v1.4.8` (source build)  
+**Binary:** `Diablo3Forever.exe` (Windows x64 Single-File Standalone — Zero Dependencies)
+
+---
+
+## 🔧 Fix: Exact Battle.net `.build.info` Formatting
+
+Resolves the 0.18-second startup crash where the game client reads `.build.info` during TACT initialization by ensuring an exact byte-for-byte match with official Battle.net deployments:
+
+- **Plain UNIX LF Line Endings (`\n`):** Switched from Windows `\r\n` (CRLF) to strict `\n` (`0x0A`), eliminating trailing `\r` carriage returns from corrupting field and pipe parsing.
+- **Populated Install Key (Col 4):** Restored writing the 16-byte MD5 Install Key (`installCKey`, e.g. `827b919b9e88016acb948efaaf76df08`) instead of leaving it blank.
+- **Empty KeyRing Field (Col 13):** Cleared the `KeyRing` column to `""` matching official retail Battle.net installations.
+- **Self-Healing Rebuild (`--rebuild-casc`):** Preserves existing install keys, clears `KeyRing`, and normalizes line endings on existing installations.
+- **Verified Compatibility:** Verified character-for-character (703 bytes) against a working retail installation (`D:\D3_280_99920\.build.info`).
+
+---
+
+# Diablo 3 Forever v1.4.7 — CASC tact Container Fix & .product.db Support
 
 **Release Date:** November 14, 2026  
 **Build:** `v1.4.7` (source build)  
