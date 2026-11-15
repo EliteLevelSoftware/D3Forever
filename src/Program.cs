@@ -3037,9 +3037,11 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
 
                 uint entriesBytesLen = (uint)(list.Count * 18);
                 int rawLen = 40 + (int)entriesBytesLen;
-                // The client expects the file to be the entry table rounded up to 4 KB plus a 32 KB
-                // zero-filled reserve; a shorter file makes it reject the whole storage.
-                int paddedLen = ((rawLen + 4095) & ~4095) + 8 * 4096;
+                // The 2.8 client expects the file to be at least the entry table rounded up to 4 KB plus a 32 KB
+                // (0x8000) update area. Battle.net provides generous headroom (393,216 B / 0x60000) so later modding
+                // (e.g. EliteLevelD3 mod layer) and client updates can append entries without shrinking the reserve.
+                int minLen = ((rawLen + 4095) & ~4095) + 8 * 4096;          // the client's minimum: 4 KB-rounded entries + 32 KB update area
+                int paddedLen = Math.Max(0x60000, minLen + 0x10000);        // Battle.net's 393,216-byte buckets; 64 KB spare when bigger
                 byte[] idxBuf = new byte[paddedLen];
 
                 BinaryPrimitives.WriteUInt32LittleEndian(idxBuf.AsSpan(0, 4), 16u); // HeaderHashSize

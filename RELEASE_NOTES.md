@@ -1,4 +1,23 @@
-﻿# Diablo 3 Forever v1.4.8 — Battle.net .build.info Exact Match & Crash Fix
+﻿# Diablo 3 Forever v1.4.9 — Battle.net CASC Index Headroom & Mod Support Fix
+
+**Release Date:** November 14, 2026  
+**Build:** `v1.4.9` (source build)  
+**Binary:** `Diablo3Forever.exe` (Windows x64 Single-File Standalone — Zero Dependencies)
+
+---
+
+## 🔧 Fix: CASC Index Headroom (`tact::ClientHandler::Create() error '11'`)
+
+Resolves the verified startup crash occurring on modded Diablo III installations (such as EliteLevelD3) built on top of D3Forever installs:
+
+- **Root Cause:** The Diablo III 2.8.0 client (`Diablo III64.exe`) requires every `Data\data\*.idx` mapping table to be at least its entry table rounded up to 4 KB, plus a 32 KB (`0x8000`) zero-filled update area. D3Forever previously wrote index files padded to exactly that minimum (`round4K(entries) + 0x8000`). When server launchers or mod tools (such as EliteLevelD3's `ModBuilder`) appended modded CASC entries (~27 entries per bucket), buckets 02 and 0d crossed the 4 KB page boundary, leaving only 28 KB (`0x7000`) of update space. TACT aborted startup within 0.3 seconds with `tact::ClientHandler::Create() failed with error '11'` and generated `RepairMarker.psv`.
+- **Battle.net Headroom Allocation:** Updated `CascStorageWriter.WriteIndexFiles` to allocate generous headroom modeled on official Battle.net deployments (`Math.Max(0x60000, minLen + 0x10000)`). All 16 `.idx` files now provide Battle.net's 393,216-byte (`0x60000`) minimum bucket capacity, with 64 KB extra spare headroom if entries grow larger.
+- **Mod Layer & Client Update Safety:** Provides 48 KB to 64 KB+ of free space beyond the client's mandatory 32 KB update area, guaranteeing third-party mod tools, mod layers, and client self-updates can append hundreds of entries without exhausting the update reserve or triggering TACT error 11.
+- **Self-Healing Rebuild (`--rebuild-casc`):** Running `--rebuild-casc` on existing installations rewrites all `.idx` index buckets with the new Battle.net headroom, immediately repairing short buckets without requiring redownloading game data.
+
+---
+
+# Diablo 3 Forever v1.4.8 — Battle.net .build.info Exact Match & Crash Fix
 
 **Release Date:** November 14, 2026  
 **Build:** `v1.4.8` (source build)  
