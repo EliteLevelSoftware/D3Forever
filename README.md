@@ -1,6 +1,6 @@
 ﻿<div align="center">
 
-<img src="https://raw.githubusercontent.com/EliteLevelSoftware/D3Forever/main/docs/d3forever_logo.png" width="96"/>
+<img src="docs/d3forever_logo.png" width="96"/>
 
 # Diablo 3 Forever
 ### Historical Archive Downloader, Multi-Version Installer & Offline Game Builder

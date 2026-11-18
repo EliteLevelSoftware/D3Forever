@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Raster master. True vector tracing of the photoreal product render
+       (metallic rims, leather, glass, filigree) does not hold up. This SVG
+       embeds master-1024.png, which is the source of truth at every size.
+       Small sizes (16–32, and 48) are high-quality linear-light downscales
+       of this render, not a separate flat mark. -->
+  <image width="1024" height="1024" href="master-1024.png" xlink:href="master-1024.png"/>
+</svg>
