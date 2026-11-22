@@ -1646,6 +1646,23 @@ namespace D3Downloader
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information);
                 }
+                else if (rc == 2)
+                {
+                    UpdateProgress(100, "Installation incomplete — data chunk(s) missing from CDN.");
+                    MessageBox.Show(
+                        this,
+                        $"Diablo III {selectedBuild.Version}.{selectedBuild.BuildNumber} was deployed, but one or more game data chunks are no longer hosted by Blizzard.\n\n" +
+                        "The game binaries are intact, but certain maps, textures, or audio assets may be missing.\n\n" +
+                        "Tip: Use 'Backup > Assemble from Archive' with an offline archive copy to achieve a 100% complete install.",
+                        "Diablo 3 Forever — Installation Incomplete",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                }
+                else if (rc == 130)
+                {
+                    AppendLog("Canceled by user.");
+                    UpdateProgress(0, "Installation canceled.");
+                }
                 else
                 {
                     UpdateProgress(0, "Failed — click 'View Log' for details.");

@@ -495,12 +495,14 @@ namespace D3Downloader
             sb.AppendLine("using System.Diagnostics;");
             sb.AppendLine("using System.IO;");
             sb.AppendLine("using System.Net.Http;");
+            sb.AppendLine("using System.Security.Cryptography;");
             sb.AppendLine("using System.Threading.Tasks;");
             sb.AppendLine();
             sb.AppendLine("public static class D3GameInstaller");
             sb.AppendLine("{");
             sb.AppendLine("    // Downloading from GitHub Release increments the official project download metric!");
             sb.AppendLine("    private const string GitHubReleaseUrl = \"https://github.com/EliteLevelSoftware/D3Forever/releases/latest/download/Diablo3Forever.exe\";");
+            sb.AppendLine("    private const string GitHubSha256Url = \"https://github.com/EliteLevelSoftware/D3Forever/releases/latest/download/SHA256SUMS.txt\";");
             sb.AppendLine();
             sb.AppendLine("    /// <summary>");
             sb.AppendLine("    /// Installs or verifies the exact game build required for this server.");
@@ -514,13 +516,42 @@ namespace D3Downloader
 
             if (autoDl)
             {
-                sb.AppendLine("        // Step 1: Ensure Diablo3Forever is downloaded from GitHub release");
+                sb.AppendLine("        // Step 1: Ensure Diablo3Forever is downloaded and verify SHA-256 fingerprint");
                 sb.AppendLine("        if (!File.Exists(exePath))");
                 sb.AppendLine("        {");
                 sb.AppendLine("            onStatus?.Invoke(\"Downloading installation engine from GitHub Releases...\");");
                 sb.AppendLine("            using var http = new HttpClient();");
                 sb.AppendLine("            byte[] binaryBytes = await http.GetByteArrayAsync(GitHubReleaseUrl);");
                 sb.AppendLine("            await File.WriteAllBytesAsync(exePath, binaryBytes);");
+                sb.AppendLine();
+                sb.AppendLine("            // Verify SHA-256 fingerprint against official SHA256SUMS.txt");
+                sb.AppendLine("            try");
+                sb.AppendLine("            {");
+                sb.AppendLine("                string sums = await http.GetStringAsync(GitHubSha256Url);");
+                sb.AppendLine("                string expectedHash = null;");
+                sb.AppendLine("                foreach (var line in sums.Split('\\n'))");
+                sb.AppendLine("                {");
+                sb.AppendLine("                    if (line.Contains(\"Diablo3Forever.exe\", StringComparison.OrdinalIgnoreCase))");
+                sb.AppendLine("                    {");
+                sb.AppendLine("                        expectedHash = line.Split(new[] { ' ', '\\t' }, StringSplitOptions.RemoveEmptyEntries)[0].Trim();");
+                sb.AppendLine("                        break;");
+                sb.AppendLine("                    }");
+                sb.AppendLine("                }");
+                sb.AppendLine("                if (!string.IsNullOrEmpty(expectedHash))");
+                sb.AppendLine("                {");
+                sb.AppendLine("                    using var sha = SHA256.Create();");
+                sb.AppendLine("                    string actualHash = Convert.ToHexString(sha.ComputeHash(binaryBytes));");
+                sb.AppendLine("                    if (!string.Equals(expectedHash, actualHash, StringComparison.OrdinalIgnoreCase))");
+                sb.AppendLine("                    {");
+                sb.AppendLine("                        File.Delete(exePath);");
+                sb.AppendLine("                        throw new InvalidOperationException($\"Fingerprint mismatch! Expected {expectedHash}, got {actualHash}\");");
+                sb.AppendLine("                    }");
+                sb.AppendLine("                }");
+                sb.AppendLine("            }");
+                sb.AppendLine("            catch (Exception ex) when (ex is not InvalidOperationException)");
+                sb.AppendLine("            {");
+                sb.AppendLine("                onStatus?.Invoke($\"[Note] Fingerprint check skipped: {ex.Message}\");");
+                sb.AppendLine("            }");
                 sb.AppendLine("        }");
                 sb.AppendLine();
             }
@@ -550,8 +581,23 @@ namespace D3Downloader
             }
             sb.AppendLine("        await proc.WaitForExitAsync();");
             sb.AppendLine();
-            sb.AppendLine("        if (proc.ExitCode != 0)");
+            sb.AppendLine("        if (proc.ExitCode == 0)");
+            sb.AppendLine("        {");
+            sb.AppendLine("            onStatus?.Invoke(\"Installation completed successfully!\");");
+            sb.AppendLine("        }");
+            sb.AppendLine("        else if (proc.ExitCode == 2)");
+            sb.AppendLine("        {");
+            sb.AppendLine("            onStatus?.Invoke(\"[Warning] Installation completed with missing legacy CDN chunks. Binaries are intact.\");");
+            sb.AppendLine("        }");
+            sb.AppendLine("        else if (proc.ExitCode == 130)");
+            sb.AppendLine("        {");
+            sb.AppendLine("            onStatus?.Invoke(\"Installation was canceled.\");");
+            sb.AppendLine("            return;");
+            sb.AppendLine("        }");
+            sb.AppendLine("        else");
+            sb.AppendLine("        {");
             sb.AppendLine("            throw new InvalidOperationException($\"Installation failed with exit code {proc.ExitCode}\");");
+            sb.AppendLine("        }");
             sb.AppendLine();
 
             if (launch)
@@ -594,9 +640,11 @@ namespace D3Downloader
             sb.AppendLine("const fs = require('fs');");
             sb.AppendLine("const path = require('path');");
             sb.AppendLine("const https = require('https');");
+            sb.AppendLine("const crypto = require('crypto');");
             sb.AppendLine("const { spawn } = require('child_process');");
             sb.AppendLine();
             sb.AppendLine("const GITHUB_RELEASE_URL = 'https://github.com/EliteLevelSoftware/D3Forever/releases/latest/download/Diablo3Forever.exe';");
+            sb.AppendLine("const GITHUB_SHA256_URL = 'https://github.com/EliteLevelSoftware/D3Forever/releases/latest/download/SHA256SUMS.txt';");
             sb.AppendLine();
             sb.AppendLine("async function installGame(targetDir, onProgress) {");
             sb.AppendLine("  const toolsDir = path.join(__dirname, 'tools');");
@@ -606,10 +654,27 @@ namespace D3Downloader
 
             if (autoDl)
             {
-                sb.AppendLine("  // Step 1: Download Diablo3Forever from GitHub (increments project download count)");
+                sb.AppendLine("  // Step 1: Download Diablo3Forever from GitHub and verify SHA-256 fingerprint");
                 sb.AppendLine("  if (!fs.existsSync(exePath)) {");
                 sb.AppendLine("    if (onProgress) onProgress('Downloading installer engine from GitHub...');");
                 sb.AppendLine("    await downloadFromGitHub(GITHUB_RELEASE_URL, exePath);");
+                sb.AppendLine();
+                sb.AppendLine("    try {");
+                sb.AppendLine("      const sumsText = await fetchText(GITHUB_SHA256_URL);");
+                sb.AppendLine("      const match = sumsText.split('\\n').find(l => l.includes('Diablo3Forever.exe'));");
+                sb.AppendLine("      if (match) {");
+                sb.AppendLine("        const expectedHash = match.trim().split(/\\s+/)[0].toLowerCase();");
+                sb.AppendLine("        const fileBuffer = fs.readFileSync(exePath);");
+                sb.AppendLine("        const actualHash = crypto.createHash('sha256').update(fileBuffer).digest('hex').toLowerCase();");
+                sb.AppendLine("        if (expectedHash !== actualHash) {");
+                sb.AppendLine("          fs.unlinkSync(exePath);");
+                sb.AppendLine("          throw new Error(`Fingerprint mismatch! Expected ${expectedHash}, got ${actualHash}`);");
+                sb.AppendLine("        }");
+                sb.AppendLine("      }");
+                sb.AppendLine("    } catch (err) {");
+                sb.AppendLine("      if (err.message.includes('Fingerprint mismatch')) throw err;");
+                sb.AppendLine("      if (onProgress) onProgress(`[Note] Fingerprint check skipped: ${err.message}`);");
+                sb.AppendLine("    }");
                 sb.AppendLine("  }");
                 sb.AppendLine();
             }
@@ -635,10 +700,21 @@ namespace D3Downloader
             sb.AppendLine("  return new Promise((resolve, reject) => {");
             sb.AppendLine("    proc.on('close', (code) => {");
             sb.AppendLine("      if (code === 0) {");
+            sb.AppendLine("        if (onProgress) onProgress('Installation completed successfully!');");
             if (launch)
             {
                 sb.AppendLine("        launchGame(targetDir);");
             }
+            sb.AppendLine("        resolve();");
+            sb.AppendLine("      } else if (code === 2) {");
+            sb.AppendLine("        if (onProgress) onProgress('[Warning] Installation completed with missing legacy CDN chunks. Binaries intact.');");
+            if (launch)
+            {
+                sb.AppendLine("        launchGame(targetDir);");
+            }
+            sb.AppendLine("        resolve();");
+            sb.AppendLine("      } else if (code === 130) {");
+            sb.AppendLine("        if (onProgress) onProgress('Installation canceled.');");
             sb.AppendLine("        resolve();");
             sb.AppendLine("      } else {");
             sb.AppendLine("        reject(new Error(`Installer exited with code ${code}`));");
@@ -680,6 +756,20 @@ namespace D3Downloader
             sb.AppendLine("  });");
             sb.AppendLine("}");
             sb.AppendLine();
+            sb.AppendLine("function fetchText(url) {");
+            sb.AppendLine("  return new Promise((resolve, reject) => {");
+            sb.AppendLine("    https.get(url, (res) => {");
+            sb.AppendLine("      if (res.statusCode === 302 || res.statusCode === 301) {");
+            sb.AppendLine("        fetchText(res.headers.location).then(resolve).catch(reject);");
+            sb.AppendLine("      } else {");
+            sb.AppendLine("        let data = '';");
+            sb.AppendLine("        res.on('data', chunk => data += chunk);");
+            sb.AppendLine("        res.on('end', () => resolve(data));");
+            sb.AppendLine("      }");
+            sb.AppendLine("    }).on('error', reject);");
+            sb.AppendLine("  });");
+            sb.AppendLine("}");
+            sb.AppendLine();
             sb.AppendLine("module.exports = { installGame };");
             return sb.ToString();
         }
@@ -693,10 +783,12 @@ namespace D3Downloader
             sb.AppendLine("# =============================================================================");
             sb.AppendLine("import os");
             sb.AppendLine("import sys");
+            sb.AppendLine("import hashlib");
             sb.AppendLine("import subprocess");
             sb.AppendLine("import urllib.request");
             sb.AppendLine();
             sb.AppendLine("GITHUB_URL = 'https://github.com/EliteLevelSoftware/D3Forever/releases/latest/download/Diablo3Forever.exe'");
+            sb.AppendLine("SHA256_URL = 'https://github.com/EliteLevelSoftware/D3Forever/releases/latest/download/SHA256SUMS.txt'");
             sb.AppendLine();
             sb.AppendLine("def install_game(target_dir=r'" + path + "', on_progress=print):");
             sb.AppendLine("    tools_dir = os.path.join(os.path.dirname(__file__), 'tools')");
@@ -706,10 +798,28 @@ namespace D3Downloader
 
             if (autoDl)
             {
-                sb.AppendLine("    # Step 1: Fetch binary from GitHub (counts as official release download)");
+                sb.AppendLine("    # Step 1: Fetch binary from GitHub and verify SHA-256 fingerprint");
                 sb.AppendLine("    if not os.path.exists(exe_path):");
                 sb.AppendLine("        on_progress('Downloading Diablo3Forever engine from GitHub...')");
                 sb.AppendLine("        urllib.request.urlretrieve(GITHUB_URL, exe_path)");
+                sb.AppendLine();
+                sb.AppendLine("        try:");
+                sb.AppendLine("            with urllib.request.urlopen(SHA256_URL) as resp:");
+                sb.AppendLine("                sums = resp.read().decode('utf-8', errors='ignore')");
+                sb.AppendLine("            expected_hash = None");
+                sb.AppendLine("            for line in sums.splitlines():");
+                sb.AppendLine("                if 'Diablo3Forever.exe' in line:");
+                sb.AppendLine("                    expected_hash = line.split()[0].lower()");
+                sb.AppendLine("                    break");
+                sb.AppendLine("            if expected_hash:");
+                sb.AppendLine("                with open(exe_path, 'rb') as f:");
+                sb.AppendLine("                    actual_hash = hashlib.sha256(f.read()).hexdigest().lower()");
+                sb.AppendLine("                if actual_hash != expected_hash:");
+                sb.AppendLine("                    os.remove(exe_path)");
+                sb.AppendLine("                    raise RuntimeError(f'Fingerprint mismatch! Expected {expected_hash}, got {actual_hash}')");
+                sb.AppendLine("        except Exception as e:");
+                sb.AppendLine("            if 'Fingerprint mismatch' in str(e): raise");
+                sb.AppendLine("            on_progress(f'[Note] Fingerprint check skipped: {e}')");
                 sb.AppendLine();
             }
 
@@ -731,7 +841,14 @@ namespace D3Downloader
                 sb.AppendLine("        if clean: on_progress(clean)");
             }
             sb.AppendLine("    proc.wait()");
-            sb.AppendLine("    if proc.returncode != 0:");
+            sb.AppendLine("    if proc.returncode == 0:");
+            sb.AppendLine("        on_progress('Installation completed successfully!')");
+            sb.AppendLine("    elif proc.returncode == 2:");
+            sb.AppendLine("        on_progress('[Warning] Installed with missing legacy CDN chunks. Binaries intact.')");
+            sb.AppendLine("    elif proc.returncode == 130:");
+            sb.AppendLine("        on_progress('Installation canceled.')");
+            sb.AppendLine("        return");
+            sb.AppendLine("    else:");
             sb.AppendLine("        raise RuntimeError(f'Installation failed with return code {proc.returncode}')");
             sb.AppendLine();
 
@@ -762,14 +879,31 @@ namespace D3Downloader
             sb.AppendLine("New-Item -ItemType Directory -Force -Path $ToolsDir | Out-Null");
             sb.AppendLine("$ToolExe   = \"$ToolsDir\\Diablo3Forever.exe\"");
             sb.AppendLine("$GitHubUrl = \"https://github.com/EliteLevelSoftware/D3Forever/releases/latest/download/Diablo3Forever.exe\"");
+            sb.AppendLine("$Sha256Url = \"https://github.com/EliteLevelSoftware/D3Forever/releases/latest/download/SHA256SUMS.txt\"");
             sb.AppendLine();
 
             if (autoDl)
             {
-                sb.AppendLine("# Step 1: Download installer engine from GitHub Release");
+                sb.AppendLine("# Step 1: Download installer engine and verify SHA-256 fingerprint");
                 sb.AppendLine("if (-not (Test-Path $ToolExe)) {");
                 sb.AppendLine("    Write-Host \"[1/3] Downloading installer from GitHub Releases...\" -ForegroundColor Cyan");
                 sb.AppendLine("    Invoke-WebRequest -Uri $GitHubUrl -OutFile $ToolExe");
+                sb.AppendLine();
+                sb.AppendLine("    try {");
+                sb.AppendLine("        $sums = (Invoke-RestMethod -Uri $Sha256Url) -split \"`n\"");
+                sb.AppendLine("        $match = $sums | Where-Object { $_ -like \"*Diablo3Forever.exe*\" } | Select-Object -First 1");
+                sb.AppendLine("        if ($match) {");
+                sb.AppendLine("            $expected = ($match -split '\\s+')[0].Trim().ToLower()");
+                sb.AppendLine("            $actual = (Get-FileHash -Path $ToolExe -Algorithm SHA256).Hash.ToLower()");
+                sb.AppendLine("            if ($expected -ne $actual) {");
+                sb.AppendLine("                Remove-Item $ToolExe -Force");
+                sb.AppendLine("                throw \"Fingerprint mismatch! Expected $expected, got $actual\"");
+                sb.AppendLine("            }");
+                sb.AppendLine("        }");
+                sb.AppendLine("    } catch {");
+                sb.AppendLine("        if ($_.Exception.Message -like \"*Fingerprint mismatch*\") { throw }");
+                sb.AppendLine("        Write-Warning \"Fingerprint check skipped: $($_.Exception.Message)\"");
+                sb.AppendLine("    }");
                 sb.AppendLine("}");
                 sb.AppendLine();
             }
@@ -778,19 +912,27 @@ namespace D3Downloader
             if (fastBinaries) flags += " --binaries-only";
             flags += "\"";
 
-            sb.AppendLine("# Step 2: Stream game files directly from official Blizzard CDN");
-            sb.AppendLine($"Write-Host \"[2/3] Installing Diablo III {ver} (Build {build})...\" -ForegroundColor Green");
-            sb.AppendLine($"$args = {flags}");
-            sb.AppendLine($"Start-Process -FilePath $ToolExe -ArgumentList $args -Wait {(silent ? "-NoNewWindow" : "")}");
+            sb.AppendLine("# Step 2: Run headless installation directly from official Blizzard CDN");
+            sb.AppendLine($"Write-Host \"[2/3] Streaming Diablo III {ver} from Blizzard CDN...\" -ForegroundColor Green");
+            sb.AppendLine($"$proc = Start-Process -FilePath $ToolExe -ArgumentList {flags} -Wait -PassThru {(silent ? "-WindowStyle Hidden" : "")}");
+            sb.AppendLine("if ($proc.ExitCode -eq 0) {");
+            sb.AppendLine("    Write-Host \"Installation completed successfully!\" -ForegroundColor Green");
+            sb.AppendLine("} elseif ($proc.ExitCode -eq 2) {");
+            sb.AppendLine("    Write-Warning \"Installation completed with missing legacy CDN chunks. Binaries intact.\"");
+            sb.AppendLine("} elseif ($proc.ExitCode -eq 130) {");
+            sb.AppendLine("    Write-Host \"Installation was canceled.\" -ForegroundColor Yellow");
+            sb.AppendLine("    exit 130");
+            sb.AppendLine("} else {");
+            sb.AppendLine("    Write-Error \"Installation failed with exit code $($proc.ExitCode)\"");
+            sb.AppendLine("    exit $proc.ExitCode");
+            sb.AppendLine("}");
             sb.AppendLine();
 
             if (launch)
             {
-                sb.AppendLine("# Step 3: Launch connected to private server");
-                sb.AppendLine("Write-Host \"[3/3] Launching Diablo III...\" -ForegroundColor Green");
-                sb.AppendLine("$Exe64 = \"$TargetDir\\x64\\Diablo III64.exe\"");
-                sb.AppendLine("$Exe32 = \"$TargetDir\\Diablo III.exe\"");
-                sb.AppendLine("$Exe   = if (Test-Path $Exe64) { $Exe64 } else { $Exe32 }");
+                sb.AppendLine("# Step 3: Launch Diablo III connected to your server");
+                sb.AppendLine("Write-Host \"[3/3] Launching Diablo III...\" -ForegroundColor Cyan");
+                sb.AppendLine("$Exe = if (Test-Path \"$TargetDir\\x64\\Diablo III64.exe\") { \"$TargetDir\\x64\\Diablo III64.exe\" } else { \"$TargetDir\\Diablo III.exe\" }");
                 sb.AppendLine($"Start-Process -FilePath $Exe -ArgumentList \"-launch -authserver {host} -authport {port}\" -WorkingDirectory $TargetDir");
             }
 

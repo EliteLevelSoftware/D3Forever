@@ -1,8 +1,10 @@
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -111,6 +113,23 @@ namespace D3Downloader
         [STAThread]
         public static int Main(string[] args)
         {
+            // Standardize CLI number formatting so progress output is machine-readable across all locales
+            CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+            CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+            Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
+
+            using var cts = new CancellationTokenSource();
+            Console.CancelKeyPress += (s, e) =>
+            {
+                e.Cancel = true;
+                if (!cts.IsCancellationRequested)
+                {
+                    Console.WriteLine("\n[CANCEL] Cancellation requested. Flushing downloaded data and updating index...");
+                    cts.Cancel();
+                }
+            };
+
             string targetDir = @"C:\Program Files (x86)\Diablo III";
             string region = "us";
             string locale = "enUS";
@@ -601,6 +620,53 @@ namespace D3Downloader
                 return 1;
             }
 
+            string cancelMarker1 = Path.Combine(targetDir, ".cancel");
+            string cancelMarker2 = Path.Combine(targetDir, ".d3forever-cancel");
+            try { if (File.Exists(cancelMarker1)) File.Delete(cancelMarker1); } catch { }
+            try { if (File.Exists(cancelMarker2)) File.Delete(cancelMarker2); } catch { }
+
+            _ = Task.Run(async () =>
+            {
+                while (!cts.IsCancellationRequested)
+                {
+                    try
+                    {
+                        if (File.Exists(cancelMarker1) || File.Exists(cancelMarker2))
+                        {
+                            Console.WriteLine("\n[CANCEL] Cancellation marker file detected. Stopping pipeline cleanly...");
+                            cts.Cancel();
+                            try { if (File.Exists(cancelMarker1)) File.Delete(cancelMarker1); } catch { }
+                            try { if (File.Exists(cancelMarker2)) File.Delete(cancelMarker2); } catch { }
+                            break;
+                        }
+                    }
+                    catch { }
+
+                    try { await Task.Delay(500, cts.Token); } catch { break; }
+                }
+            }, cts.Token);
+
+            if (Console.IsInputRedirected)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        while (!cts.IsCancellationRequested)
+                        {
+                            string line = await Console.In.ReadLineAsync(cts.Token);
+                            if (line == null || line.Trim().Equals("cancel", StringComparison.OrdinalIgnoreCase) || line.Trim().Equals("stop", StringComparison.OrdinalIgnoreCase))
+                            {
+                                Console.WriteLine("\n[CANCEL] Input stream closed or cancellation command received. Stopping cleanly...");
+                                cts.Cancel();
+                                break;
+                            }
+                        }
+                    }
+                    catch { }
+                }, cts.Token);
+            }
+
             return ExecuteBuildPipelineAsync(
                 targetDir: targetDir,
                 selectedBuild: resolvedBuild,
@@ -613,7 +679,7 @@ namespace D3Downloader
                 configureShortcutFirewall: fullDeploy,
                 log: Console.WriteLine,
                 onProgress: null,
-                ct: CancellationToken.None).GetAwaiter().GetResult();
+                ct: cts.Token).GetAwaiter().GetResult();
         }
 
         public static async Task<int> ExecuteBuildPipelineAsync(
@@ -867,7 +933,8 @@ namespace D3Downloader
                     patchArchiveGroupHash,
                     maxConcurrency,
                     dryRunLimit,
-                    onProgress);
+                    onProgress,
+                    ct: ct);
 
                 Console.WriteLine($"      Indexed {archiveIndexMap.Count:N0} unique BLTE chunks across {archives.Length} CDN archives.");
 
@@ -896,6 +963,12 @@ namespace D3Downloader
                 byte[] decDownload = BlteDecoder.Decode(rawDownload);
                 var downloadEntries = ParseDownloadManifest(decDownload, locale);
                 Console.WriteLine($"      Download manifest decoded ({downloadEntries.Count:N0} Windows+{locale} CASC data entries).");
+
+                // Free large decoded manifest byte arrays to minimize memory footprint
+                decEncoding = null;
+                decInstall = null;
+                decDownload = null;
+                GC.Collect(2, GCCollectionMode.Forced, false);
 
                 string rootCKey = buildCfg["root"].Trim();
                 ckeyToEkey.TryGetValue(rootCKey, out string rootEKey);
@@ -933,7 +1006,8 @@ namespace D3Downloader
                         {
                             double mapped = 20.0 + (pct * 0.80);
                             onProgress?.Invoke(mapped, msg);
-                        });
+                        },
+                        ct: ct);
 
                     log("[7/7] Binaries-Only mode selected: skipping CASC data.NNN archive download.");
                     if (selectedBuild?.IsCasc == true)
@@ -958,7 +1032,8 @@ namespace D3Downloader
                         {
                             double mapped = 20.0 + (pct * 0.15);
                             onProgress?.Invoke(mapped, msg);
-                        });
+                        },
+                        ct: ct);
 
                     // Step 7: Build CASC Data\data (data.NNN, 16 .idx files, and shmem)
                     var cascToProcess = dryRunLimit > 0
@@ -966,7 +1041,7 @@ namespace D3Downloader
                         : downloadEntries;
 
                     log($"[7/7] Building CASC storage in Data\\data ({cascToProcess.Count:N0} entries)...");
-                    using (var cascWriter = new CascStorageWriter(cascDataDir))
+                    using (var cascWriter = new CascStorageWriter(cascDataDir, log))
                     {
                         // Always store system manifests in CASC storage just like Battle.net Agent
                         cascWriter.WriteEntry(ParseHex16(encodingEKey), rawEncoding);
@@ -987,18 +1062,23 @@ namespace D3Downloader
                             {
                                 double mapped = 35.0 + (pct * 0.65);
                                 onProgress?.Invoke(mapped, msg);
-                            });
-
-                        if (missingChunks > 0)
-                        {
-                            log($"[WARNING] {missingChunks:N0} game data chunk(s) are no longer hosted by Blizzard and are missing from this build.");
-                            log("          The client may hang or crash when it loads the affected assets (sounds/maps/textures).");
-                            log("          Tip: install this build from an offline archive (Backup > Assemble from Archive) for a 100% complete copy.");
-                        }
+                            },
+                            ct: ct);
 
                         cascWriter.WriteIndicesAndShmem();
                         CascStorageWriter.EnsureAuxiliaryContainers(targetDir, log);
                         ProductDbWriter.EnsureProductDb(targetDir, log);
+
+                        if (missingChunks > 0)
+                        {
+                            log("========================================================================");
+                            log($"[ERROR] Diablo III deployment incomplete: {missingChunks:N0} game data chunk(s) missing.");
+                            log("        Blizzard no longer hosts these chunks on CDN for this historical build.");
+                            log("        Tip: install this build from an offline archive (Backup > Assemble from Archive) for a 100% complete copy.");
+                            log("========================================================================");
+                            onProgress?.Invoke(100, $"Incomplete: {missingChunks:N0} chunk(s) missing from CDN.");
+                            return 2;
+                        }
                     }
                 }
 
@@ -1023,6 +1103,15 @@ namespace D3Downloader
                 log("========================================================================");
                 onProgress?.Invoke(100, "Diablo III deployment completed with 0 errors!");
                 return 0;
+            }
+            catch (OperationCanceledException)
+            {
+                log("");
+                log("========================================================================");
+                log(" [CANCELED] Diablo III deployment canceled by user or launcher request.");
+                log("========================================================================");
+                onProgress?.Invoke(0, "Operation canceled.");
+                return 130;
             }
             catch (Exception ex)
             {
@@ -1301,7 +1390,7 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             return dict;
         }
 
-        private static async Task<byte[]> DownloadFromCdnAsync(string relativePath, long? rangeStart = null, long? rangeEnd = null, string expectedMd5Hex = null)
+        private static async Task<byte[]> DownloadFromCdnAsync(string relativePath, long? rangeStart = null, long? rangeEnd = null, string expectedMd5Hex = null, CancellationToken ct = default)
         {
             relativePath = relativePath.TrimStart('/').ToLowerInvariant();
             Exception lastEx = null;
@@ -1309,9 +1398,11 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
 
             for (int attempt = 0; attempt < 4; attempt++)
             {
+                if (ct.IsCancellationRequested) ct.ThrowIfCancellationRequested();
                 bool hostHadTransientFailure = false;
                 foreach (string host in _cdnHosts)
                 {
+                    if (ct.IsCancellationRequested) ct.ThrowIfCancellationRequested();
                     if (!IsTrustedCdnHost(host))
                     {
                         continue;
@@ -1320,13 +1411,14 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                     string url = $"https://{host}/{relativePath}";
                     try
                     {
-                        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                        linkedCts.CancelAfter(TimeSpan.FromSeconds(30));
                         using var req = new HttpRequestMessage(HttpMethod.Get, url);
                         if (rangeStart.HasValue && rangeEnd.HasValue)
                         {
                             req.Headers.Range = new RangeHeaderValue(rangeStart.Value, rangeEnd.Value);
                         }
-                        using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+                        using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, linkedCts.Token);
                         if (!resp.IsSuccessStatusCode)
                         {
                             lastEx = new HttpRequestException($"HTTP {(int)resp.StatusCode} on {url}");
@@ -1336,7 +1428,7 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                             }
                             continue;
                         }
-                        byte[] data = await resp.Content.ReadAsByteArrayAsync(cts.Token);
+                        byte[] data = await resp.Content.ReadAsByteArrayAsync(linkedCts.Token);
 
                         if (rangeStart.HasValue && rangeEnd.HasValue)
                         {
@@ -1359,6 +1451,10 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
 
                         return data;
                     }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        throw;
+                    }
                     catch (Exception ex)
                     {
                         lastEx = ex;
@@ -1375,7 +1471,7 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                     break;
                 }
 
-                await Task.Delay(250 * (attempt + 1));
+                await Task.Delay(250 * (attempt + 1), ct);
             }
 
             if (integrityFailure)
@@ -1385,6 +1481,80 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             }
 
             throw new IOException($"Exhausted all Blizzard CDN hosts downloading '{relativePath}'.", lastEx);
+        }
+
+        private static async Task DownloadRangeFromCdnIntoBufferAsync(
+            string relativePath,
+            long rangeStart,
+            long rangeEnd,
+            byte[] destinationBuffer,
+            CancellationToken ct = default)
+        {
+            relativePath = relativePath.TrimStart('/').ToLowerInvariant();
+            int expectedRangeLength = (int)(rangeEnd - rangeStart + 1);
+            Exception lastEx = null;
+
+            for (int attempt = 0; attempt < 4; attempt++)
+            {
+                if (ct.IsCancellationRequested) ct.ThrowIfCancellationRequested();
+                bool hostHadTransientFailure = false;
+                foreach (string host in _cdnHosts)
+                {
+                    if (ct.IsCancellationRequested) ct.ThrowIfCancellationRequested();
+                    if (!IsTrustedCdnHost(host)) continue;
+
+                    string url = $"https://{host}/{relativePath}";
+                    try
+                    {
+                        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                        linkedCts.CancelAfter(TimeSpan.FromSeconds(30));
+                        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                        req.Headers.Range = new RangeHeaderValue(rangeStart, rangeEnd);
+
+                        using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, linkedCts.Token);
+                        if (!resp.IsSuccessStatusCode)
+                        {
+                            lastEx = new HttpRequestException($"HTTP {(int)resp.StatusCode} on {url}");
+                            if (!IsDefinitiveNotFound(resp.StatusCode)) hostHadTransientFailure = true;
+                            continue;
+                        }
+
+                        await using var stream = await resp.Content.ReadAsStreamAsync(linkedCts.Token);
+                        int totalRead = 0;
+                        while (totalRead < expectedRangeLength)
+                        {
+                            int read = await stream.ReadAsync(destinationBuffer.AsMemory(totalRead, expectedRangeLength - totalRead), linkedCts.Token);
+                            if (read == 0) break;
+                            totalRead += read;
+                        }
+
+                        if (totalRead != expectedRangeLength)
+                        {
+                            lastEx = new InvalidDataException($"Range request returned {totalRead} bytes instead of {expectedRangeLength} from {host}.");
+                            continue;
+                        }
+
+                        return;
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        lastEx = ex;
+                        if (ex is HttpRequestException || ex is TaskCanceledException || ex is IOException)
+                        {
+                            hostHadTransientFailure = true;
+                        }
+                    }
+                }
+
+                if (!hostHadTransientFailure) break;
+                await Task.Delay(250 * (attempt + 1), ct);
+            }
+
+            throw new InvalidDataException($"Failed to download range [{rangeStart}..{rangeEnd}] for '{relativePath}' from all Blizzard CDN hosts.", lastEx);
         }
 
         private static bool IsDefinitiveNotFound(HttpStatusCode status) =>
@@ -1445,7 +1615,8 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             string patchArchiveGroupHash,
             int maxConcurrency,
             int dryRunLimit,
-            Action<double, string> onProgress = null)
+            Action<double, string> onProgress = null,
+            CancellationToken ct = default)
         {
             using var sem = new SemaphoreSlim(maxConcurrency);
             int completed = 0;
@@ -1461,20 +1632,20 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                 string hash = archives[idx].ToLowerInvariant();
                 tasks[idx] = Task.Run(async () =>
                 {
-                    await sem.WaitAsync();
+                    await sem.WaitAsync(ct);
                     try
                     {
                         string localPath = Path.Combine(indicesDir, hash + ".index");
                         byte[] bytes;
                         if (File.Exists(localPath) && new FileInfo(localPath).Length > 28)
                         {
-                            bytes = await File.ReadAllBytesAsync(localPath);
+                            bytes = await File.ReadAllBytesAsync(localPath, ct);
                         }
                         else
                         {
                             string rel = $"{_cdnPath}/data/{hash.Substring(0, 2)}/{hash.Substring(2, 2)}/{hash}.index";
-                            bytes = await DownloadFromCdnAsync(rel);
-                            await File.WriteAllBytesAsync(localPath, bytes);
+                            bytes = await DownloadFromCdnAsync(rel, ct: ct);
+                            await File.WriteAllBytesAsync(localPath, bytes, ct);
                         }
                         indexBytesArr[idx] = bytes;
                         int done = Interlocked.Increment(ref completed);
@@ -1483,6 +1654,10 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                             Console.WriteLine($"      Archive indices: {done}/{total} ({(done * 100.0 / total):F0}%)");
                             onProgress?.Invoke(10.0 + (6.0 * done / total), $"Downloading CDN archive indices: {done}/{total} ({(done * 100.0 / total):F0}%)");
                         }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
                     }
                     catch (Exception ex)
                     {
@@ -1497,7 +1672,7 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                     {
                         sem.Release();
                     }
-                });
+                }, ct);
             }
             await Task.WhenAll(tasks);
 
@@ -1536,11 +1711,15 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                 }
             }
 
-            // Parse all data archive indices in order (0..archives.Length-1)
+            // Parse all data archive indices in order (0..archives.Length-1) and release buffers immediately
             var dict = new Dictionary<string, ArchiveEntryLoc>(900000, StringComparer.OrdinalIgnoreCase);
             for (short a = 0; a < archives.Length; a++)
             {
-                ParseArchiveIndexBuffer(indexBytesArr[a], a, dict);
+                if (indexBytesArr[a] != null)
+                {
+                    ParseArchiveIndexBuffer(indexBytesArr[a], a, dict);
+                    indexBytesArr[a] = null;
+                }
             }
 
             // The archive-group / patch-archive-group files are derived artefacts. They are generated later by
@@ -2118,80 +2297,79 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             int maxConcurrency,
             string localArchiveSource = null,
             D3BuildCatalogItem selectedBuild = null,
-            Action<double, string> onProgress = null)
+            Action<double, string> onProgress = null,
+            CancellationToken ct = default)
         {
-            using var sem = new SemaphoreSlim(maxConcurrency);
             int completed = 0;
             long bytesDone = 0;
             long totalBytes = items.Sum(x => (long)x.UncompressedSize);
             var sw = Stopwatch.StartNew();
 
-            var tasks = items.Select(async item =>
+            await Parallel.ForEachAsync(items, new ParallelOptions
             {
-                await sem.WaitAsync();
+                MaxDegreeOfParallelism = maxConcurrency,
+                CancellationToken = ct
+            }, async (item, token) =>
+            {
+                string outPath = SafePathUnder(targetDir, item.RelativePath);
+                Directory.CreateDirectory(Path.GetDirectoryName(outPath));
+
+                if (File.Exists(outPath) && new FileInfo(outPath).Length == item.UncompressedSize)
+                {
+                    Interlocked.Add(ref bytesDone, item.UncompressedSize);
+                    int curSkipped = Interlocked.Increment(ref completed);
+                    double pct = (curSkipped * 100.0) / Math.Max(1, items.Count);
+                    string pctVerifyStr = pct.ToString("F0", CultureInfo.InvariantCulture);
+                    onProgress?.Invoke(pct, $"Verifying: {curSkipped}/{items.Count} files ({pctVerifyStr}%)");
+                    return;
+                }
+
+                if (!ckeyToEkey.TryGetValue(item.CKey, out string ekey))
+                {
+                    throw new KeyNotFoundException($"Install file '{item.RelativePath}' CKey {item.CKey} not found in Encoding.");
+                }
+
+                byte[] rawBlte = null;
                 try
                 {
-                    string outPath = SafePathUnder(targetDir, item.RelativePath);
-                    Directory.CreateDirectory(Path.GetDirectoryName(outPath));
-
-                    if (File.Exists(outPath) && new FileInfo(outPath).Length == item.UncompressedSize)
-                    {
-                        Interlocked.Add(ref bytesDone, item.UncompressedSize);
-                        int curSkipped = Interlocked.Increment(ref completed);
-                        double pct = (curSkipped * 100.0) / Math.Max(1, items.Count);
-                        onProgress?.Invoke(pct, $"Verifying: {curSkipped}/{items.Count} files ({(curSkipped * 100.0 / items.Count):F0}%)");
-                        return;
-                    }
-
-                    if (!ckeyToEkey.TryGetValue(item.CKey, out string ekey))
-                    {
-                        throw new KeyNotFoundException($"Install file '{item.RelativePath}' CKey {item.CKey} not found in Encoding.");
-                    }
-
-                    byte[] rawBlte = null;
-                    try
-                    {
-                        rawBlte = await DownloadDataBlobByEKeyAsync(ekey, archiveIndexMap, archives);
-                    }
-                    catch (Exception ex)
-                    {
-                        rawBlte = await TryRecoverInstallFileBytesAsync(item, ekey, targetDir, localArchiveSource, selectedBuild);
-                        if (rawBlte == null)
-                        {
-                            throw new FileNotFoundException($"Cannot recover required binary '{item.RelativePath}' (CKey: {item.CKey}): CDN returned error ({ex.Message}) and no local or delta fallback was found.");
-                        }
-                    }
-
-                    byte[] decoded;
-                    if (rawBlte.Length >= 4 && rawBlte[0] == (byte)'B' && rawBlte[1] == (byte)'L' && rawBlte[2] == (byte)'T' && rawBlte[3] == (byte)'E')
-                    {
-                        decoded = BlteDecoder.Decode(rawBlte);
-                    }
-                    else
-                    {
-                        decoded = rawBlte;
-                    }
-
-                    await File.WriteAllBytesAsync(outPath, decoded);
-
-                    long curBytes = Interlocked.Add(ref bytesDone, decoded.Length);
-                    int curFiles = Interlocked.Increment(ref completed);
-                    double curPct = (curFiles * 100.0) / Math.Max(1, items.Count);
-                    double mbps = (curBytes / 1048576.0) / Math.Max(0.1, sw.Elapsed.TotalSeconds);
-                    string msg = $"Extracting: {curFiles}/{items.Count} files | {curBytes / 1048576.0:F1}/{totalBytes / 1048576.0:F1} MB ({curPct:F1}%) | {mbps:F1} MB/s";
-                    if (curFiles % 5 == 0 || curFiles == items.Count)
-                    {
-                        Console.WriteLine($"      [Install] {curFiles}/{items.Count} files | {curBytes / 1048576.0:F1}/{totalBytes / 1048576.0:F1} MB ({curPct:F1}%) | {mbps:F1} MB/s");
-                    }
-                    onProgress?.Invoke(curPct, msg);
+                    rawBlte = await DownloadDataBlobByEKeyAsync(ekey, archiveIndexMap, archives);
                 }
-                finally
+                catch (Exception ex)
                 {
-                    sem.Release();
+                    rawBlte = await TryRecoverInstallFileBytesAsync(item, ekey, targetDir, localArchiveSource, selectedBuild);
+                    if (rawBlte == null)
+                    {
+                        throw new FileNotFoundException($"Cannot recover required binary '{item.RelativePath}' (CKey: {item.CKey}): CDN returned error ({ex.Message}) and no local or delta fallback was found.");
+                    }
                 }
-            });
 
-            await Task.WhenAll(tasks);
+                byte[] decoded;
+                if (rawBlte.Length >= 4 && rawBlte[0] == (byte)'B' && rawBlte[1] == (byte)'L' && rawBlte[2] == (byte)'T' && rawBlte[3] == (byte)'E')
+                {
+                    decoded = BlteDecoder.Decode(rawBlte);
+                }
+                else
+                {
+                    decoded = rawBlte;
+                }
+
+                await File.WriteAllBytesAsync(outPath, decoded, token);
+
+                long curBytes = Interlocked.Add(ref bytesDone, decoded.Length);
+                int curFiles = Interlocked.Increment(ref completed);
+                double curPct = (curFiles * 100.0) / Math.Max(1, items.Count);
+                double mbps = (curBytes / 1048576.0) / Math.Max(0.1, sw.Elapsed.TotalSeconds);
+                string pctStr = curPct.ToString("F1", CultureInfo.InvariantCulture);
+                string mbDoneStr = (curBytes / 1048576.0).ToString("F1", CultureInfo.InvariantCulture);
+                string mbTotalStr = (totalBytes / 1048576.0).ToString("F1", CultureInfo.InvariantCulture);
+                string mbpsStr = mbps.ToString("F1", CultureInfo.InvariantCulture);
+                string msg = $"Extracting: {curFiles}/{items.Count} files | {mbDoneStr}/{mbTotalStr} MB ({pctStr}%) | {mbpsStr} MB/s";
+                if (curFiles % 5 == 0 || curFiles == items.Count)
+                {
+                    Console.WriteLine($"      [Install] {curFiles}/{items.Count} files | {mbDoneStr}/{mbTotalStr} MB ({pctStr}%) | {mbpsStr} MB/s");
+                }
+                onProgress?.Invoke(curPct, msg);
+            });
         }
 
         private static async Task<byte[]> TryRecoverInstallFileBytesAsync(InstallItem item, string ekey, string targetDir, string localArchiveSource, D3BuildCatalogItem selectedBuild)
@@ -2363,7 +2541,8 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             Dictionary<string, ArchiveEntryLoc> archiveIndexMap,
             string[] archives,
             int maxConcurrency,
-            Action<double, string> onProgress = null)
+            Action<double, string> onProgress = null,
+            CancellationToken ct = default)
         {
             int skippedChunks = 0;
             var perArchive = new List<ArchiveSlice>[archives.Length];
@@ -2371,9 +2550,25 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             var looseItems = new List<DownloadItem>();
 
             long totalExpectedBytes = 0;
+            int alreadyPresentCount = 0;
+            long alreadyPresentBytes = 0;
+
             foreach (var item in items)
             {
-                if (archiveIndexMap.TryGetValue(item.EKeyHex, out ArchiveEntryLoc loc))
+                long itemSize = item.CompressedSize;
+                bool isArchived = archiveIndexMap.TryGetValue(item.EKeyHex, out ArchiveEntryLoc loc);
+                if (isArchived) itemSize = loc.Size;
+                totalExpectedBytes += itemSize;
+
+                string key9Hex = item.EKeyHex.Length >= 18 ? item.EKeyHex.Substring(0, 18) : item.EKeyHex;
+                if (cascWriter.HasEntry(key9Hex))
+                {
+                    alreadyPresentCount++;
+                    alreadyPresentBytes += itemSize;
+                    continue;
+                }
+
+                if (isArchived)
                 {
                     perArchive[loc.ArchiveIndex].Add(new ArchiveSlice
                     {
@@ -2382,13 +2577,16 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                         Offset = loc.Offset,
                         Size = loc.Size
                     });
-                    totalExpectedBytes += loc.Size;
                 }
                 else
                 {
                     looseItems.Add(item);
-                    totalExpectedBytes += item.CompressedSize;
                 }
+            }
+
+            if (alreadyPresentCount > 0)
+            {
+                Console.WriteLine($"      Resuming CASC storage: {alreadyPresentCount:N0} of {items.Count:N0} chunks ({(alreadyPresentBytes / 1048576.0):F1} MB) already verified in local archives.");
             }
 
             // Build coalesced range jobs (gap <= 32 KB, max range <= 16 MB)
@@ -2436,11 +2634,12 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                 rangeJobs.Add(currentJob);
             }
 
-            Console.WriteLine($"      Coalesced {items.Count - looseItems.Count:N0} archived chunks into {rangeJobs.Count:N0} HTTP Range requests + {looseItems.Count:N0} loose files ({totalExpectedBytes / 1048576.0:F1} MB total).");
+            int chunksToDownload = items.Count - alreadyPresentCount;
+            long bytesToDownload = totalExpectedBytes - alreadyPresentBytes;
+            Console.WriteLine($"      Coalesced {chunksToDownload - looseItems.Count:N0} archived chunks into {rangeJobs.Count:N0} HTTP Range requests + {looseItems.Count:N0} loose files ({bytesToDownload / 1048576.0:F1} MB to download).");
 
-            using var sem = new SemaphoreSlim(maxConcurrency);
-            long downloadedBytes = 0;
-            int completedFiles = 0;
+            long downloadedBytes = alreadyPresentBytes;
+            int completedFiles = alreadyPresentCount;
             int totalFiles = items.Count;
             var sw = Stopwatch.StartNew();
             long lastLogTick = 0;
@@ -2455,92 +2654,112 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
                 {
                     double pct = totalExpectedBytes > 0 ? (b * 100.0 / totalExpectedBytes) : 100.0;
                     double mbps = (b / 1048576.0) / Math.Max(0.1, sw.Elapsed.TotalSeconds);
-                    string msg = $"Downloading CASC data: {pct:F1}% | {b / 1048576.0:F1}/{totalExpectedBytes / 1048576.0:F1} MB | {mbps:F1} MB/s";
-                    Console.WriteLine($"      [CASC] {pct,6:F2}% | {b / 1048576.0,8:F1} / {totalExpectedBytes / 1048576.0,8:F1} MB | {f,7:N0} / {totalFiles:N0} files | {mbps,6:F1} MB/s");
+                    string pctStr = pct.ToString("F2", CultureInfo.InvariantCulture);
+                    string mbDoneStr = (b / 1048576.0).ToString("F1", CultureInfo.InvariantCulture);
+                    string mbTotalStr = (totalExpectedBytes / 1048576.0).ToString("F1", CultureInfo.InvariantCulture);
+                    string mbpsStr = mbps.ToString("F1", CultureInfo.InvariantCulture);
+                    string msg = $"Downloading CASC data: {pctStr}% | {mbDoneStr}/{mbTotalStr} MB | {mbpsStr} MB/s";
+                    Console.WriteLine($"      [CASC] {pctStr,6}% | {mbDoneStr,8} / {mbTotalStr,8} MB | {f,7} / {totalFiles} files | {mbpsStr,6} MB/s");
                     onProgress?.Invoke(pct, msg);
                 }
             }
 
-            // Execute coalesced archive range jobs
-            var rangeTasks = rangeJobs.Select(async job =>
+            ReportProgress(0, 0, force: true);
+
+            try
             {
-                await sem.WaitAsync();
-                try
+                // Execute coalesced archive range jobs with bounded concurrency and zero LOH allocations
+                await Parallel.ForEachAsync(rangeJobs, new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = maxConcurrency,
+                    CancellationToken = ct
+                }, async (job, token) =>
                 {
                     string archHash = archives[job.ArchiveIndex].ToLowerInvariant();
                     string rel = $"{_cdnPath}/data/{archHash.Substring(0, 2)}/{archHash.Substring(2, 2)}/{archHash}";
+                    int expectedLen = (int)(job.RangeEnd - job.RangeStart + 1);
 
-                    byte[] rangeBuf;
+                    byte[] rangeBuf = ArrayPool<byte>.Shared.Rent(expectedLen);
                     try
                     {
-                        rangeBuf = await DownloadFromCdnAsync(rel, job.RangeStart, job.RangeEnd);
-                    }
-                    catch (Exception ex)
-                    {
-                        // A retired archive no longer serves its chunks; keep assembling the rest of the CASC storage.
-                        Console.WriteLine($"      [Notice] Archive {archHash.Substring(0, 12)}... unavailable ({ex.Message}); skipped {job.Slices.Count} chunk(s).");
-                        Interlocked.Add(ref skippedChunks, job.Slices.Count);
-                        ReportProgress(job.Slices.Count, 0);
-                        return;
-                    }
-
-                    long logicalBytes = 0;
-                    foreach (var slice in job.Slices)
-                    {
-                        int relOffset = (int)(slice.Offset - job.RangeStart);
-                        if (relOffset < 0 || relOffset + (int)slice.Size > rangeBuf.Length)
+                        try
                         {
-                            Console.WriteLine($"      [Notice] Incomplete archive response for chunk {slice.EKeyHex}; skipped.");
-                            Interlocked.Increment(ref skippedChunks);
-                            continue;
+                            await DownloadRangeFromCdnIntoBufferAsync(rel, job.RangeStart, job.RangeEnd, rangeBuf, token);
                         }
-                        cascWriter.WriteEntry(slice.EKeyBytes, rangeBuf, relOffset, (int)slice.Size);
-                        logicalBytes += slice.Size;
+                        catch (OperationCanceledException)
+                        {
+                            throw;
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"      [Notice] Archive {archHash.Substring(0, 12)}... unavailable ({ex.Message}); skipped {job.Slices.Count} chunk(s).");
+                            Interlocked.Add(ref skippedChunks, job.Slices.Count);
+                            ReportProgress(job.Slices.Count, 0);
+                            return;
+                        }
+
+                        long logicalBytes = 0;
+                        foreach (var slice in job.Slices)
+                        {
+                            if (token.IsCancellationRequested) break;
+                            int relOffset = (int)(slice.Offset - job.RangeStart);
+                            if (relOffset < 0 || relOffset + (int)slice.Size > expectedLen)
+                            {
+                                Console.WriteLine($"      [Notice] Incomplete archive response for chunk {slice.EKeyHex}; skipped.");
+                                Interlocked.Increment(ref skippedChunks);
+                                continue;
+                            }
+                            cascWriter.WriteEntry(slice.EKeyBytes, rangeBuf, relOffset, (int)slice.Size);
+                            logicalBytes += slice.Size;
+                        }
+                        ReportProgress(job.Slices.Count, logicalBytes);
                     }
-                    ReportProgress(job.Slices.Count, logicalBytes);
-                }
-                finally
+                    finally
+                    {
+                        ArrayPool<byte>.Shared.Return(rangeBuf);
+                    }
+                });
+
+                // Execute loose file downloads with bounded concurrency
+                await Parallel.ForEachAsync(looseItems, new ParallelOptions
                 {
-                    sem.Release();
-                }
-            });
-
-            await Task.WhenAll(rangeTasks);
-
-            // Execute loose file downloads
-            var looseTasks = looseItems.Select(async item =>
-            {
-                await sem.WaitAsync();
-                try
+                    MaxDegreeOfParallelism = maxConcurrency,
+                    CancellationToken = ct
+                }, async (item, token) =>
                 {
                     string lower = item.EKeyHex.ToLowerInvariant();
                     string rel = $"{_cdnPath}/data/{lower.Substring(0, 2)}/{lower.Substring(2, 2)}/{lower}";
                     try
                     {
-                        byte[] buf = await DownloadFromCdnAsync(rel);
+                        byte[] buf = await DownloadFromCdnAsync(rel, ct: token);
                         cascWriter.WriteEntry(ParseHex16(item.EKeyHex), buf, 0, buf.Length);
                         ReportProgress(1, buf.Length);
                     }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
                     catch (Exception ex)
                     {
-                        // Some historical loose chunks may have been purged or relocated; log notice so archive assembly succeeds
                         Console.WriteLine($"      [Notice] Non-critical loose chunk {item.EKeyHex} skipped ({ex.Message}).");
                         Interlocked.Increment(ref skippedChunks);
                         ReportProgress(1, 0);
                     }
-                }
-                finally
-                {
-                    sem.Release();
-                }
-            });
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("      [Notice] Download paused by cancellation request; preserving downloaded chunks.");
+                cascWriter.Flush();
+                cascWriter.WriteIndicesAndShmem();
+                throw;
+            }
 
-            await Task.WhenAll(looseTasks);
             ReportProgress(0, 0, force: true);
 
             if (skippedChunks > 0)
             {
-                Console.WriteLine($"      [WARNING] CASC storage is INCOMPLETE: {skippedChunks:N0} of {items.Count:N0} chunks could not be downloaded (Blizzard retired their archives). The game may hang or crash when it loads those specific assets.");
+                Console.WriteLine($"      [WARNING] CASC storage is INCOMPLETE: {skippedChunks:N0} of {items.Count:N0} chunks could not be downloaded (Blizzard retired their archives).");
             }
             else
             {
@@ -2785,19 +3004,11 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
         private ushort _currentArchiveIndex;
         private uint _currentOffset;
 
-        public CascStorageWriter(string cascDataDir)
+        public CascStorageWriter(string cascDataDir, Action<string> log = null)
         {
             _cascDataDir = cascDataDir;
+            Directory.CreateDirectory(_cascDataDir);
             for (int i = 0; i < 16; i++) _buckets[i] = new List<IdxRecord>(20000);
-
-            // If existing data.* files exist and are populated, keep them rather than destroying user data
-            bool hasExistingData = File.Exists(Path.Combine(_cascDataDir, "data.000")) &&
-                                   new FileInfo(Path.Combine(_cascDataDir, "data.000")).Length > 1024 * 1024;
-            if (!hasExistingData)
-            {
-                foreach (var f in Directory.GetFiles(_cascDataDir, "*.idx")) { try { File.Delete(f); } catch { } }
-                foreach (var f in Directory.GetFiles(_cascDataDir, "data.*")) { try { File.Delete(f); } catch { } }
-            }
 
             // Generate 7-byte cross-link seed from MD5(hostname + "data/data")
             using var md5 = MD5.Create();
@@ -2805,7 +3016,160 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
             byte[] md5Bytes = md5.ComputeHash(hostBytes);
             Buffer.BlockCopy(md5Bytes, 2, _crossLinkSeed7, 0, 7);
 
-            OpenNextDataArchive(0);
+            // Check if existing data.NNN files are present
+            string[] existingDataFiles = Directory.GetFiles(_cascDataDir, "data.*")
+                .Where(p => System.Text.RegularExpressions.Regex.IsMatch(Path.GetFileName(p), @"^data\.\d{3}$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                .OrderBy(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            bool resumed = false;
+            if (existingDataFiles.Length > 0)
+            {
+                try
+                {
+                    resumed = ResumeFromExistingArchives(existingDataFiles, log);
+                }
+                catch (Exception ex)
+                {
+                    log?.Invoke($"      [warn] Failed to index existing data archives ({ex.Message}); starting clean storage.");
+                    resumed = false;
+                }
+            }
+
+            if (!resumed)
+            {
+                foreach (var f in Directory.GetFiles(_cascDataDir, "*.idx")) { try { File.Delete(f); } catch { } }
+                foreach (var f in Directory.GetFiles(_cascDataDir, "data.*")) { try { File.Delete(f); } catch { } }
+                OpenNextDataArchive(0);
+            }
+        }
+
+        private bool ResumeFromExistingArchives(string[] dataFiles, Action<string> log)
+        {
+            ushort highestArchive = 0;
+            long highestOffset = 0;
+            int scannedRecords = 0;
+            byte[] header = new byte[30];
+
+            foreach (string file in dataFiles)
+            {
+                string baseName = Path.GetFileName(file);
+                if (!ushort.TryParse(baseName.Substring(5), out ushort archiveIndex)) continue;
+                if (archiveIndex > highestArchive)
+                {
+                    highestArchive = archiveIndex;
+                    highestOffset = 0;
+                }
+
+                long length = new FileInfo(file).Length;
+                long offset = 0;
+
+                using (var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 512 * 1024, FileOptions.SequentialScan))
+                {
+                    while (offset + 30 <= length)
+                    {
+                        stream.Position = offset;
+                        if (stream.Read(header, 0, 30) != 30) break;
+                        uint size = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(16, 4));
+                        if (size < 30 || offset + size > length)
+                        {
+                            break;
+                        }
+
+                        byte[] key9 = new byte[9];
+                        for (int i = 0; i < 9; i++) key9[i] = header[15 - i];
+                        string keyHex = Convert.ToHexString(key9);
+
+                        byte bucket = CascHash.GetBucketIndex(key9);
+                        if (offset < 480 && size == 30)
+                        {
+                            bucket = (byte)((bucket + 1) & 0x0F);
+                        }
+                        else
+                        {
+                            _writtenKeys9.Add(keyHex);
+                        }
+
+                        _buckets[bucket].Add(new IdxRecord(key9, archiveIndex, (uint)offset, size));
+                        offset += size;
+                        scannedRecords++;
+                    }
+                }
+
+                // If file had leftover truncated bytes at EOF, trim back to the last valid record boundary
+                if (offset < length)
+                {
+                    try
+                    {
+                        using var trimStream = new FileStream(file, FileMode.Open, FileAccess.Write, FileShare.None);
+                        trimStream.SetLength(offset);
+                    }
+                    catch { }
+                }
+
+                if (archiveIndex == highestArchive)
+                {
+                    highestOffset = offset;
+                }
+            }
+
+            if (scannedRecords == 0 || highestOffset < 480)
+            {
+                return false;
+            }
+
+            log?.Invoke($"      Found existing CASC storage: verified {scannedRecords:N0} records ({_writtenKeys9.Count:N0} assets) across {dataFiles.Length} archive(s). Resuming write at data.{highestArchive:D3} (offset {highestOffset:N0}).");
+
+            _currentArchiveIndex = highestArchive;
+            if (highestOffset + 1024 * 1024 <= MaxDataFileSize)
+            {
+                string dataPath = Path.Combine(_cascDataDir, $"data.{_currentArchiveIndex:D3}");
+                _currentStream = new FileStream(dataPath, FileMode.Open, FileAccess.Write, FileShare.Read, 1024 * 1024);
+                _currentStream.Seek(highestOffset, SeekOrigin.Begin);
+                _currentOffset = (uint)highestOffset;
+            }
+            else
+            {
+                OpenNextDataArchive((ushort)(_currentArchiveIndex + 1));
+            }
+
+            return true;
+        }
+
+        public bool HasEntry(string key9Hex)
+        {
+            lock (_writeLock)
+            {
+                return _writtenKeys9.Contains(key9Hex);
+            }
+        }
+
+        public bool HasEntry(byte[] key16)
+        {
+            string key9Hex = Convert.ToHexString(key16, 0, 9);
+            lock (_writeLock)
+            {
+                return _writtenKeys9.Contains(key9Hex);
+            }
+        }
+
+        public int ExistingEntryCount
+        {
+            get
+            {
+                lock (_writeLock)
+                {
+                    return _writtenKeys9.Count;
+                }
+            }
+        }
+
+        public void Flush()
+        {
+            lock (_writeLock)
+            {
+                _currentStream?.Flush();
+            }
         }
 
         private void OpenNextDataArchive(ushort archiveIndex)
@@ -3190,7 +3554,12 @@ if (Test-Path '{exe32.Replace("'", "''")}') {{
 
         public void Dispose()
         {
-            _currentStream?.Dispose();
+            lock (_writeLock)
+            {
+                try { _currentStream?.Flush(); } catch { }
+                _currentStream?.Dispose();
+                _currentStream = null;
+            }
         }
     }
 }

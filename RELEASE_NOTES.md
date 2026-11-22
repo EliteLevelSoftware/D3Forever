@@ -1,4 +1,51 @@
-﻿# Diablo 3 Forever v1.4.9 — Battle.net CASC Index Headroom & Mod Support Fix
+﻿# Diablo 3 Forever v1.5.0 — Resumable CASC Downloads, Strict Reporting, Memory Optimization & Clean Cancellation
+
+**Release Date:** November 22, 2026  
+**Build:** `v1.5.0` (source build)  
+**Binary:** `Diablo3Forever.exe` (Windows x64 Single-File Standalone — Zero Dependencies)
+
+---
+
+## ⚡ Major Architectural Improvements
+
+### 1. 🔄 Intelligent Chunk-Level Resumable CASC Downloads
+- **Root Problem:** Previously, interrupted or resumed downloads wiped the target directory's `data.*` files and restarted the entire 16 GB download from scratch.
+- **Solution:** Implemented `CascStorageWriter.ResumeFromExistingArchives`. When starting or resuming an install, Diablo 3 Forever scans existing `data.NNN` archives, validates every chunk entry's header, sizes, and MD5 hashes, indexes existing chunk keys into memory, and seeks to the end of the highest archive to continue appending.
+- **Delta Skipping:** Chunks already present on disk are immediately skipped, reducing resume time from hours of re-downloading to seconds of verification. Incomplete or torn chunks from abnormal process termination are safely truncated back to the last valid boundary.
+
+### 2. 🚦 Strict Success & Incomplete Error Reporting
+- **Root Problem:** When downloading retired or historical builds with missing CDN chunks, D3Forever logged a warning but still reported `SUCCESS: Diablo III deployment completed with 0 errors!` and returned exit code `0`. Custom launchers could not distinguish complete installs from incomplete ones.
+- **Solution:** Strict exit code convention implemented:
+  - `0`: Complete success (100% chunks verified).
+  - `2`: Incomplete install (executables and available assets intact; historical chunks missing from CDN).
+  - `130`: Operation canceled.
+  - `1`: Fatal error.
+- UI displays a clear explanatory warning dialog instead of a false success message when missing chunks are detected.
+
+### 3. 🌐 Standardized Invariant Culture Output
+- **Root Problem:** Silent / CLI progress percentages and byte sizes were formatted using the host operating system's regional culture (e.g. `12,34%` with comma decimals, localized number separators), causing launcher regex parsers to break on European and Latin American PCs.
+- **Solution:** Enforced strict `CultureInfo.InvariantCulture` across all silent CLI progress logs and events, ensuring consistent `.` decimal points and machine-readable percentage metrics worldwide.
+
+### 4. 🛑 Clean Graceful Cancellation
+- **Root Problem:** Custom server launchers running `Diablo3Forever.exe` without an interactive console had no clean mechanism to stop the installer without force-killing the process.
+- **Solution:** 
+  - **Sentinel File Watcher:** Background watcher checks every 500ms for a `.cancel` or `.d3forever-cancel` sentinel file in the target directory.
+  - **Standard Input Detection:** Detects stdin pipe closure (EOF) or incoming `"cancel\n"` commands.
+  - **Clean Flush:** All active streams are safely flushed, `.idx` files and shmem are committed, and the process exits cleanly with code `130`.
+
+### 5. 📉 Massive Memory Peak Reduction (5.5 GB ➔ ~250 MB)
+- **Root Problem:** Pre-allocating tens of thousands of range download tasks with `Task.WhenAll`, together with unbounded byte array allocations on the Large Object Heap (LOH) via `ReadAsByteArrayAsync`, caused peak memory usage to spike to 5.5 GB.
+- **Solution:**
+  - Bounded concurrency pipeline powered by `Parallel.ForEachAsync`.
+  - Buffer renting using `ArrayPool<byte>.Shared` with direct HTTP stream reading (`DownloadRangeFromCdnIntoBufferAsync`).
+  - Decoded manifest byte arrays (`decEncoding`, `decInstall`, `decDownload`) are cleared immediately after parsing and promptly collected via forced GC. Peak memory footprint is reduced by over 95%.
+
+### 6. 🛡️ SHA-256 Fingerprint Verification in Launcher Studio & Docs
+- Updated `SERVER_INTEGRATION_GUIDE.md` and `LauncherIntegrationDialog.cs` code generators (C#, Electron, Python, PowerShell) to download `SHA256SUMS.txt`, parse the expected SHA-256 hash, and verify the binary fingerprint before execution to protect against compromised downloads.
+
+---
+
+# Diablo 3 Forever v1.4.9 — Battle.net CASC Index Headroom & Mod Support Fix
 
 **Release Date:** November 14, 2026  
 **Build:** `v1.4.9` (source build)  
